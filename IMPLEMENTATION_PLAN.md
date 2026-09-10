@@ -1,6 +1,6 @@
 # ProcessIA · Suivi de développement
 
-Version 0.7.0, 10 septembre 2026. Développement local en cours, par tranches verticales TDD.
+Version 0.8.0, 10 septembre 2026. Développement local en cours, par tranches verticales TDD.
 
 | Tranche | Parcours principal | Résultat | État |
 | --- | --- | --- | --- |
@@ -10,7 +10,7 @@ Version 0.7.0, 10 septembre 2026. Développement local en cours, par tranches ve
 | T004 | US02 | Apporter une source par MCP | Vérifié localement |
 | T005 | US01 | Partager une projection maîtrisée | Vérifié localement |
 | T006 | US03 | Relier dialogue écrit, sélection et commandes | Vérifié localement |
-| T007 | US03 | Ajouter la voix et les reprises | Non commencé |
+| T007 | US03 | Ajouter la voix et les reprises | Socle local vérifié, intégration ouverte |
 | T008 | US04 | Compléter la navigation et le profil BPMN | Non commencé |
 | T009 | US05 | Assister et consolider les entretiens | Non commencé |
 | T010 | US06 | Produire un diagnostic et une feuille de route | Non commencé |
@@ -126,3 +126,22 @@ Premier comportement visé : sélectionner une tâche, formuler une modification
 Preuve : `docs/validation/T006.md`. Vérification consolidée : 31 tests d'intégration et de contrat, build TypeScript/Vite et 10 parcours Chromium réussis.
 
 Limites : le fournisseur de langage reste déterministe et reconnaît un petit ensemble de formulations de démonstration. L'extraction automatique d'une connaissance candidate depuis le texte d'une source n'est pas réalisée ; l'API reçoit une proposition structurée avec une référence de passage validée. L'enrichissement couvre uniquement le rôle d'une tâche. La règle de conflit suspend encore toute proposition dès que la révision du modèle change, y compris lorsqu'une autre tâche a été modifiée. La qualification des variantes temporelles, la suggestion de navigation vers une cible hors écran et la clarification présentant plusieurs tâches homonymes restent à développer. Les règles détaillées de décision sur les divergences restent proposées et ne sont pas présentées comme ratifiées.
+
+## T007 · Socle local de continuité voix-texte
+
+Statut : socle vérifié localement le 10 septembre 2026. Intégration vocale réelle ouverte dans DEC-02 et DEC-04. Révision Git : jalon partiel T007 documenté dans l'historique du dépôt.
+
+Premier comportement visé : obtenir un accord explicite avant l'accès au microphone, rattacher un tour vocal simulé puis un tour écrit au même entretien, conserver la sélection, interrompre une réponse sans commande partielle et corriger une transcription avec son historique.
+
+| Cycle | Exigences | Rouge observé | Résultat vérifié |
+| --- | --- | --- | --- |
+| Session multimodale | FR-015, TC-015 | Le service d'entretien était absent | Une session persistante ordonne les tours voix et texte, conserve leur sélection et déduplique chaque clé de tour |
+| Microphone facultatif | FR-016, TC-016 | Aucun consentement ni état d'écoute n'existait | Le micro est demandé après action explicite ; prêt, écoute, traitement et pause sont visibles ; un refus maintient le texte |
+| Conservation distincte | FR-017, TC-017 | Aucun contrat ne distinguait flux vocal, transcription et audio | La politique de transcription est visible, `none` conserve le parcours manuel et aucun audio n'est écrit |
+| Interruption | FR-018, TC-018 | Aucune réponse d'entretien ne pouvait être interrompue | La réponse passe à l'état interrompu et le service de modèle ne reçoit aucune commande |
+| Correction | FR-019, TC-019 | Le segment original et ses corrections n'étaient pas modélisés | L'original, la correction, l'auteur et la date sont conservés ; une proposition non appliquée est recalculée depuis le texte corrigé |
+| Studio web | FR-015, FR-016, FR-019 | Les contrôles vocaux et l'historique étaient absents | Activation, pause par passage au texte, refus simulé et correction sont vérifiés dans Chromium dans un même entretien |
+
+Preuve : `docs/validation/T007.md`. Vérification consolidée : 37 tests d'intégration et de contrat, build TypeScript/Vite et 11 parcours Chromium réussis.
+
+Limites : le navigateur accède au microphone uniquement pour vérifier l'autorisation et l'état local ; aucun adaptateur de reconnaissance ou de synthèse vocale n'est branché. Dans la démonstration, le texte transcrit est saisi dans le champ de relecture. Les accords de plusieurs participants, le retrait d'accord avec règles sur les données déjà conservées, la détection d'une coupure matérielle et l'interruption réseau pendant une génération réelle restent à développer. La durée `session` est liée au processus serveur local ; les durées et responsabilités du pilote exigent la décision DEC-04.

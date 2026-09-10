@@ -111,6 +111,14 @@ Routes locales :
 - `POST /api/dossiers/:dossier/sharing/publications` : confirmation idempotente du partage.
 - `GET /api/dossiers/:dossier/shared-knowledge` : projection filtrée selon les droits relus au moment de la réponse.
 - `POST /api/dossiers/:dossier/shared-knowledge/:publication/revoke` : retrait versionné d'une publication.
+- `POST /api/interviews` : crée ou reprend l'entretien actif du dossier et expose sa politique de transcription.
+- `GET /api/interviews/:interview` : relit la session autorisée, ses tours et ses corrections.
+- `POST /api/interviews/:interview/consent` : enregistre le choix explicite concernant le traitement vocal.
+- `POST /api/interviews/:interview/mode` : bascule entre voix et texte dans la même session.
+- `POST /api/interviews/:interview/listen` et `POST /api/interviews/:interview/pause` : rendent l'état de capture explicite.
+- `POST /api/interviews/:interview/turns` : ajoute un tour idempotent avec son mode et sa sélection figée.
+- `POST /api/interviews/:interview/responses` et `POST /api/interviews/:interview/interrupt` : bornent une réponse interruptible sans commande implicite.
+- `POST /api/interviews/:interview/messages/:message/correct` : conserve l'original et ajoute une correction attribuée.
 
 L'historique et la liste des dossiers ne sont pas encore paginés. HTTP local exige un Host `127.0.0.1:port` et une origine identique pour les POST. Codes HTTP : 403 accès, 409 concurrence, 422 commande invalide, 400 JSON invalide, 413 corps trop grand, 415 contenu autre que JSON. Les réponses de proposition utilisent leur statut métier.
 
@@ -136,3 +144,9 @@ La limite de 64 Kio est une borne de développement, pas un quota pilote validé
 Le contrat HTTP sépare prévisualisation, confirmation et retrait. La prévisualisation n'est jamais retournée par la lecture partagée. La confirmation porte sur son identifiant exact et échoue si la source courante ne correspond plus à la version prévisualisée. Un rejeu identique retourne la publication existante ; une même clé avec une autre prévisualisation échoue.
 
 La réponse partagée contient l'identifiant et la version de publication, le texte approuvé, la date de publication et une provenance générique indiquant que les détails privés sont indisponibles. Si la session possède aussi le périmètre privé, le même service enrichit la provenance avec le titre et le passage. Le retrait exige la version courante, écrit un événement et exclut la publication des lectures suivantes.
+
+## Session d'entretien locale exécutée par T007
+
+Le contrat `src/contracts/interview.ts` décrit une session active, son mode, l'état vocal visible, le consentement, la politique de transcription et une suite ordonnée de messages. Un tour vocal exige un consentement accordé et une politique différente de `none`. Un tour écrit reste disponible dans tous les cas. Le rejeu d'une même clé avec un contenu identique retourne le message existant ; une autre charge utile échoue.
+
+Une correction met à jour le texte utilisé pour la prochaine interprétation et conserve chaque valeur précédente avec auteur et date. Une réponse interrompue passe à l'état `interrupted`. Cette transition n'appelle pas le service de commandes et ne peut donc pas appliquer un fragment de modèle. Le flux audio, la reconnaissance et la synthèse sont des frontières d'adaptateur encore ouvertes ; aucun fournisseur réel n'est sélectionné par ce contrat.

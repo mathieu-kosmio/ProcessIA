@@ -149,6 +149,8 @@ Le comportement est lié à une exigence ; l’échec initial du test a été ob
 
 **Démonstration de sortie :** Parole, interruption, passage au texte et refus micro conservent un même entretien.
 
+Progression locale au 10 septembre 2026 : session persistante, consentement explicite, état d'écoute, bascule texte, idempotence, interruption et correction sont vérifiés avec un adaptateur vocal simulé. Les cases restent ouvertes jusqu'au choix d'un fournisseur et d'une politique de conservation pilote dans DEC-02 et DEC-04 ; aucune reconnaissance ni synthèse vocale réelle n'est déclarée.
+
 ### T008 · Compléter la navigation et le profil BPMN
 
 - [ ] **[US04] T008-R** : écrire le prochain test public pour le comportement : Sous-processus et flux sont valides ; une séquence entre participants est refusée ; une modification obsolète ne s’applique pas. Observer son échec pour la bonne raison.

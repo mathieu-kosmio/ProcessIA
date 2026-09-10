@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   Model,
   Command,
@@ -8,6 +8,7 @@ import type {
   Task,
 } from '../../contracts/model.ts';
 import type { Proposal } from '../../application/interviews/propose.ts';
+import type { InterviewMessage, InterviewSession } from '../../contracts/interview.ts';
 import { Canvas } from './Canvas.tsx';
 import { TaskInspector, type TaskDetailValues } from './TaskInspector.tsx';
 import { CreateDossierDialog } from './CreateDossierDialog.tsx';
@@ -138,6 +139,14 @@ export function Studio() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [interview, setInterview] = useState<InterviewSession>();
+  const [editingTranscript, setEditingTranscript] = useState<string>();
+  const [correctionText, setCorrectionText] = useState('');
+  const microphone = useRef<MediaStream | undefined>(undefined);
+  function stopMicrophone() {
+    microphone.current?.getTracks().forEach((track) => track.stop());
+    microphone.current = undefined;
+  }
   async function refresh(dossierId = activeDossier) {
     const path = modelPath(dossierId);
     const [next, events] = await Promise.all([
@@ -146,11 +155,18 @@ export function Studio() {
     ]);
     setModel(next);
     setHistory(events);
+    const activeInterview = await post<InterviewSession>('/api/interviews', {
+      dossier_id: next.dossier_id,
+      model_id: next.id,
+      transcription_policy: 'session',
+    });
+    setInterview(activeInterview);
   }
   useEffect(() => {
     Promise.all([read<{ items: Dossier[] }>('/api/dossiers'), refresh('demo-kosmio')])
       .then(([result]) => setDossiers(result.items))
       .catch((error) => setError(error.message));
+    return stopMicrophone;
   }, []);
   async function openDossier(dossierId: string) {
     setBusy(true);
@@ -160,6 +176,8 @@ export function Studio() {
     setShowHistory(false);
     setShowSharing(false);
     setProposal(undefined);
+    stopMicrophone();
+    setInterview(undefined);
     try {
       await refresh(dossierId);
       setActiveDossier(dossierId);
@@ -229,6 +247,17 @@ export function Studio() {
     setNotice('');
     setProposal(undefined);
     try {
+      if (interview) {
+        await post<InterviewMessage>(`/api/interviews/${interview.interview_id}/turns`, {
+          idempotency_key: crypto.randomUUID(),
+          mode: interview.mode,
+          text,
+          ...(selected
+            ? { selection_snapshot: { element_id: selected, revision: model.revision } }
+            : {}),
+        });
+        setInterview(await read<InterviewSession>(`/api/interviews/${interview.interview_id}`));
+      }
       const result = await post<Proposal>('/api/proposals', {
         dossier_id: model.dossier_id,
         model_id: model.id,
@@ -238,6 +267,87 @@ export function Studio() {
         selected_id: selected,
       });
       setProposal(result);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function activateVoice() {
+    if (!interview) return;
+    setBusy(true);
+    setError('');
+    try {
+      if (!navigator.mediaDevices?.getUserMedia)
+        throw new DOMException('Microphone indisponible', 'NotSupportedError');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stopMicrophone();
+      microphone.current = stream;
+      await post<InterviewSession>(`/api/interviews/${interview.interview_id}/consent`, {
+        granted: true,
+      });
+      const listening = await post<InterviewSession>(
+        `/api/interviews/${interview.interview_id}/listen`,
+        {},
+      );
+      setInterview(listening);
+      setNotice('Micro activé pour ce tour. Aucun fichier audio n’est conservé.');
+    } catch {
+      stopMicrophone();
+      const refused = await post<InterviewSession>(
+        `/api/interviews/${interview.interview_id}/consent`,
+        { granted: false },
+      );
+      setInterview(refused);
+      setNotice('Micro refusé ou indisponible. Vous pouvez poursuivre par écrit.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function switchToText() {
+    if (!interview) return;
+    stopMicrophone();
+    setInterview(
+      await post<InterviewSession>(`/api/interviews/${interview.interview_id}/mode`, {
+        mode: 'text',
+      }),
+    );
+    setNotice('Saisie écrite active dans le même entretien.');
+  }
+  async function pauseVoice() {
+    if (!interview) return;
+    stopMicrophone();
+    setInterview(
+      await post<InterviewSession>(`/api/interviews/${interview.interview_id}/pause`, {}),
+    );
+    setNotice('Micro en pause. Aucun nouveau flux n’est capturé.');
+  }
+  async function correctTranscript(message: InterviewMessage) {
+    if (!interview || !model || !correctionText.trim()) return;
+    setBusy(true);
+    setError('');
+    try {
+      await post<InterviewMessage>(
+        `/api/interviews/${interview.interview_id}/messages/${message.message_id}/correct`,
+        { text: correctionText },
+      );
+      const correctedInterview = await read<InterviewSession>(
+        `/api/interviews/${interview.interview_id}`,
+      );
+      setInterview(correctedInterview);
+      const correctedProposal = await post<Proposal>('/api/proposals', {
+        dossier_id: model.dossier_id,
+        model_id: model.id,
+        base_revision: model.revision,
+        text: correctionText,
+        view,
+        selected_id: message.selection_snapshot?.element_id,
+      });
+      setProposal(correctedProposal);
+      setText(correctionText);
+      setEditingTranscript(undefined);
+      setCorrectionText('');
+      setNotice('Transcription corrigée et proposition recalculée.');
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -539,7 +649,60 @@ export function Studio() {
                   <strong>Faisons évoluer votre carte</strong>
                   <p>Une proposition à relire, puis à appliquer.</p>
                 </div>
-                <span className="simulation-badge">Dialogue simulé · voix à venir</span>
+                <div className="voice-controls">
+                  <span
+                    className={`voice-state ${interview?.voice_state ?? 'ready'}`}
+                    data-testid="voice-state"
+                  >
+                    {interview?.voice_consent === 'refused'
+                      ? 'Micro refusé · texte disponible'
+                      : interview?.voice_state === 'listening'
+                        ? 'Écoute active'
+                        : interview?.voice_state === 'processing'
+                          ? 'Transcription en traitement'
+                          : interview?.voice_state === 'responding'
+                            ? 'Réponse en cours'
+                            : interview?.voice_state === 'paused'
+                              ? 'Micro en pause'
+                              : 'Prêt à parler'}
+                  </span>
+                  {interview?.mode === 'voice' ? (
+                    <>
+                      {interview.voice_state === 'listening' ? (
+                        <button type="button" className="voice-action" onClick={pauseVoice}>
+                          Mettre le micro en pause
+                        </button>
+                      ) : (
+                        <button type="button" className="voice-action" onClick={activateVoice}>
+                          Reprendre le micro
+                        </button>
+                      )}
+                      <button type="button" className="voice-action" onClick={switchToText}>
+                        Passer au texte
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="voice-action primary-voice"
+                      disabled={!interview || busy}
+                      onClick={activateVoice}
+                    >
+                      Activer le micro
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="voice-policy">
+                <span>Transcription : session locale</span>
+                <span>Audio non conservé</span>
+                <span
+                  className="interview-id"
+                  data-testid="interview-id"
+                  data-interview-id={interview?.interview_id}
+                >
+                  Entretien {interview?.interview_id.slice(0, 8) ?? 'en préparation'}
+                </span>
               </div>
               {proposal && (
                 <div className="proposal" role="status">
@@ -602,6 +765,63 @@ export function Studio() {
                   )}
                 </div>
               )}
+              {interview && interview.messages.some((message) => message.role === 'user') && (
+                <div className="transcript-history" aria-label="Historique de l’entretien">
+                  {interview.messages
+                    .filter((message) => message.role === 'user')
+                    .slice(-3)
+                    .map((message) => (
+                      <article key={message.message_id}>
+                        <div>
+                          <span>
+                            {message.mode === 'voice' ? 'Transcription' : 'Message écrit'}
+                          </span>
+                          <small>Tour {message.sequence}</small>
+                        </div>
+                        <p>{message.text}</p>
+                        {message.corrections?.length ? (
+                          <small>
+                            Corrigé · original conservé : «{' '}
+                            {message.corrections[message.corrections.length - 1].previous_text} »
+                          </small>
+                        ) : null}
+                        {message.mode === 'voice' && editingTranscript !== message.message_id && (
+                          <button
+                            type="button"
+                            className="transcript-action"
+                            onClick={() => {
+                              setEditingTranscript(message.message_id);
+                              setCorrectionText(message.text);
+                            }}
+                          >
+                            Corriger la transcription
+                          </button>
+                        )}
+                        {editingTranscript === message.message_id && (
+                          <div className="transcript-correction">
+                            <label htmlFor={`correction-${message.message_id}`}>
+                              Correction de la transcription
+                            </label>
+                            <input
+                              id={`correction-${message.message_id}`}
+                              value={correctionText}
+                              onChange={(event) => setCorrectionText(event.target.value)}
+                              maxLength={2000}
+                            />
+                            <button
+                              type="button"
+                              className="primary"
+                              disabled={busy || !correctionText.trim()}
+                              onClick={() => correctTranscript(message)}
+                            >
+                              Enregistrer et réinterpréter
+                            </button>
+                          </div>
+                        )}
+                      </article>
+                    ))}
+                </div>
+              )}
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
@@ -620,7 +840,11 @@ export function Studio() {
                   disabled={busy}
                 />
                 <button className="primary" disabled={busy || !text.trim()} type="submit">
-                  {busy ? 'Traitement…' : 'Proposer la modification'}{' '}
+                  {busy
+                    ? 'Traitement…'
+                    : interview?.mode === 'voice'
+                      ? 'Interpréter la transcription'
+                      : 'Proposer la modification'}{' '}
                   <span aria-hidden="true">↑</span>
                 </button>
               </form>

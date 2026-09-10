@@ -916,6 +916,120 @@ dd {
   font-size: 9px;
   color: #8a927c;
 }
+.voice-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+.voice-state {
+  border-radius: 999px;
+  background: #f0f2ea;
+  color: #6d7664;
+  padding: 6px 9px;
+  font-size: 9px;
+  font-weight: 600;
+}
+.voice-state.listening {
+  background: #e7f2e4;
+  color: #3d6f48;
+}
+.voice-state.processing,
+.voice-state.responding {
+  background: #fff4d8;
+  color: #84631e;
+}
+.voice-action {
+  min-height: 30px;
+  border: 1px solid #d6dfd1;
+  border-radius: 6px;
+  background: #fff;
+  color: #49624d;
+  padding: 5px 9px;
+  font-size: 9px;
+  font-weight: 600;
+}
+.voice-action.primary-voice {
+  border-color: #54765c;
+  background: #54765c;
+  color: #fff;
+}
+.voice-policy {
+  display: flex;
+  gap: 8px;
+  margin-top: 11px;
+  color: #788272;
+  font-size: 9px;
+}
+.voice-policy span {
+  border-left: 1px solid #dbe1d4;
+  padding-left: 8px;
+}
+.voice-policy span:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+.transcript-history {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.transcript-history article {
+  border: 1px solid #e0e5da;
+  border-radius: 7px;
+  background: #fbfcf8;
+  padding: 10px 12px;
+}
+.transcript-history article > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  color: #65745d;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.transcript-history p {
+  margin: 7px 0;
+  color: #3f5141;
+  font-size: 11px;
+}
+.transcript-history small {
+  color: #82907b;
+  font-size: 9px;
+}
+.transcript-action {
+  display: block;
+  margin-top: 7px;
+  border: 0;
+  background: transparent;
+  color: #55745a;
+  padding: 0;
+  font-size: 9px;
+  text-decoration: underline;
+}
+.transcript-correction {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+  margin-top: 8px;
+}
+.transcript-correction label {
+  grid-column: 1 / -1;
+  color: #65745d;
+  font-size: 9px;
+}
+.transcript-correction input {
+  border: 1px solid #d6dfd1;
+  border-radius: 6px;
+  background: #fff;
+  padding: 8px;
+}
+.interview-id {
+  margin-left: auto;
+}
 .conversation form {
   margin-top: 15px;
   display: flex;

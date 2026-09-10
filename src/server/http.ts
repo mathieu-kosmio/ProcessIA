@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { SourceError, type SourceService } from '../application/sources/service.ts';
 import { SharingError, type SharingService } from '../application/sharing/service.ts';
 import { EnrichmentError, type EnrichmentService } from '../application/interviews/enrichment.ts';
+import { InterviewError, type InterviewService } from '../application/interviews/session.ts';
 import {
   createSharePreviewSchema,
   publishShareSchema,
@@ -46,6 +47,31 @@ const roleEnrichmentSchema = z
 const rejectEnrichmentSchema = z
   .object({ reason: z.string().trim().max(1000).optional() })
   .strict();
+const startInterviewSchema = z
+  .object({
+    dossier_id: z.string().min(1).max(120),
+    model_id: z.string().min(1).max(120),
+    transcription_policy: z.enum(['session', 'dossier', 'none']),
+  })
+  .strict();
+const interviewConsentSchema = z.object({ granted: z.boolean() }).strict();
+const interviewModeSchema = z.object({ mode: z.enum(['voice', 'text']) }).strict();
+const interviewTurnSchema = z
+  .object({
+    idempotency_key: z.string().min(1).max(120),
+    mode: z.enum(['voice', 'text']),
+    text: z.string().trim().min(1).max(2000),
+    selection_snapshot: z
+      .object({
+        element_id: z.string().min(1).max(120),
+        revision: z.number().int().nonnegative(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+const interviewResponseSchema = z.object({ text: z.string().trim().min(1).max(2000) }).strict();
+const transcriptCorrectionSchema = z.object({ text: z.string().trim().min(1).max(2000) }).strict();
 class HttpError extends Error {
   constructor(
     public status: number,
@@ -86,6 +112,7 @@ export function createAppServer(
     sources?: SourceService;
     sharing?: SharingService;
     enrichments?: EnrichmentService;
+    interviews?: InterviewService;
   } = {},
 ) {
   return createServer(async (req, res) => {
@@ -156,6 +183,87 @@ export function createAppServer(
         const parsed = proposalSchema.safeParse(await body(req));
         if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
         json(res, 200, await proposeChanges(service, session, parsed.data, demoProvider));
+        return;
+      }
+      if (req.method === 'POST' && path === '/api/interviews' && capabilities.interviews) {
+        const parsed = startInterviewSchema.safeParse(await body(req));
+        if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+        json(res, 201, capabilities.interviews.start(session, parsed.data));
+        return;
+      }
+      const interviewMatch = /^\/api\/interviews\/([\w-]+)$/.exec(path);
+      if (req.method === 'GET' && interviewMatch && capabilities.interviews) {
+        json(res, 200, capabilities.interviews.get(session, interviewMatch[1]));
+        return;
+      }
+      const interviewActionMatch =
+        /^\/api\/interviews\/([\w-]+)\/(consent|mode|listen|pause|interrupt|turns|responses)$/.exec(
+          path,
+        );
+      if (req.method === 'POST' && interviewActionMatch && capabilities.interviews) {
+        const interviewId = interviewActionMatch[1];
+        const action = interviewActionMatch[2];
+        if (action === 'consent') {
+          const parsed = interviewConsentSchema.safeParse(await body(req));
+          if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+          json(
+            res,
+            200,
+            capabilities.interviews.setVoiceConsent(session, interviewId, parsed.data.granted),
+          );
+          return;
+        }
+        if (action === 'mode') {
+          const parsed = interviewModeSchema.safeParse(await body(req));
+          if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+          json(
+            res,
+            200,
+            capabilities.interviews.switchMode(session, interviewId, parsed.data.mode),
+          );
+          return;
+        }
+        if (action === 'turns') {
+          const parsed = interviewTurnSchema.safeParse(await body(req));
+          if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+          json(res, 201, capabilities.interviews.addTurn(session, interviewId, parsed.data));
+          return;
+        }
+        if (action === 'responses') {
+          const parsed = interviewResponseSchema.safeParse(await body(req));
+          if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+          json(
+            res,
+            201,
+            capabilities.interviews.beginResponse(session, interviewId, parsed.data.text),
+          );
+          return;
+        }
+        const result =
+          action === 'listen'
+            ? capabilities.interviews.listen(session, interviewId)
+            : action === 'pause'
+              ? capabilities.interviews.pause(session, interviewId)
+              : capabilities.interviews.interrupt(session, interviewId);
+        json(res, 200, result);
+        return;
+      }
+      const correctionMatch = /^\/api\/interviews\/([\w-]+)\/messages\/([\w-]+)\/correct$/.exec(
+        path,
+      );
+      if (req.method === 'POST' && correctionMatch && capabilities.interviews) {
+        const parsed = transcriptCorrectionSchema.safeParse(await body(req));
+        if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+        json(
+          res,
+          200,
+          capabilities.interviews.correctTranscript(
+            session,
+            correctionMatch[1],
+            correctionMatch[2],
+            parsed.data.text,
+          ),
+        );
         return;
       }
       const enrichmentsMatch = /^\/api\/dossiers\/([\w-]+)\/models\/([\w-]+)\/enrichments$/.exec(
@@ -283,29 +391,35 @@ export function createAppServer(
       const status =
         error instanceof AccessDenied ||
         (error instanceof SourceError && error.code === 'ACCESS_DENIED') ||
-        (error instanceof SharingError && error.code === 'ACCESS_DENIED')
+        (error instanceof SharingError && error.code === 'ACCESS_DENIED') ||
+        (error instanceof InterviewError && error.code === 'INTERVIEW_NOT_FOUND')
           ? 403
           : error instanceof EnrichmentError && error.code === 'MODEL_CONFLICT'
             ? 409
-            : error instanceof EnrichmentError
-              ? 400
-              : error instanceof SharingError &&
-                  ['IDEMPOTENCY_CONFLICT', 'PREVIEW_INVALID', 'VERSION_CONFLICT'].includes(
-                    error.code,
-                  )
-                ? 409
-                : error instanceof SourceError
+            : error instanceof InterviewError && error.code === 'IDEMPOTENCY_CONFLICT'
+              ? 409
+              : error instanceof InterviewError
+                ? 400
+                : error instanceof EnrichmentError
                   ? 400
-                  : error instanceof HttpError
-                    ? error.status
-                    : 500;
+                  : error instanceof SharingError &&
+                      ['IDEMPOTENCY_CONFLICT', 'PREVIEW_INVALID', 'VERSION_CONFLICT'].includes(
+                        error.code,
+                      )
+                    ? 409
+                    : error instanceof SourceError
+                      ? 400
+                      : error instanceof HttpError
+                        ? error.status
+                        : 500;
       json(res, status, {
         code:
           error instanceof AccessDenied
             ? 'ACCESS_DENIED'
             : error instanceof SourceError ||
                 error instanceof SharingError ||
-                error instanceof EnrichmentError
+                error instanceof EnrichmentError ||
+                error instanceof InterviewError
               ? error.code
               : error instanceof HttpError
                 ? error.code
@@ -315,7 +429,8 @@ export function createAppServer(
             ? 'Dossier indisponible pour cet accès.'
             : error instanceof SourceError ||
                 error instanceof SharingError ||
-                error instanceof EnrichmentError
+                error instanceof EnrichmentError ||
+                error instanceof InterviewError
               ? error.message
               : 'La demande a échoué. Vos modifications déjà enregistrées sont conservées.',
       });
