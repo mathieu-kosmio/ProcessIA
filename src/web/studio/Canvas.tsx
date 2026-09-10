@@ -13,10 +13,13 @@ import {
 import '@xyflow/react/dist/style.css';
 import type { Model, Task } from '../../contracts/model.ts';
 
-type TaskNode = Node<{ task: Task }, 'task'>;
+type TaskNode = Node<{ task: Task; proposalTarget: boolean }, 'task'>;
 function TaskCard({ data, selected }: NodeProps<TaskNode>) {
   return (
-    <div className={`task-card ${selected ? 'selected' : ''}`}>
+    <div
+      className={`task-card ${selected ? 'selected' : ''} ${data.proposalTarget ? 'proposal-target' : ''}`}
+      data-proposal-target={data.proposalTarget ? 'true' : undefined}
+    >
       {Object.entries({
         left: Position.Left,
         right: Position.Right,
@@ -53,12 +56,14 @@ const nodeTypes = { task: TaskCard };
 export function Canvas({
   model,
   selected,
+  proposalTarget,
   onSelect,
   busy,
   onMove,
 }: {
   model: Model;
   selected?: string;
+  proposalTarget?: string;
   onSelect: (id: string) => void;
   busy: boolean;
   onMove: (id: string, position: Task['position'], baseRevision: number) => Promise<boolean>;
@@ -71,12 +76,12 @@ export function Canvas({
         id: task.id,
         type: 'task',
         position: task.position,
-        data: { task },
+        data: { task, proposalTarget: task.id === proposalTarget },
         selected: task.id === selected,
         ariaLabel: task.label,
       })),
     );
-  }, [model, selected]);
+  }, [model, selected, proposalTarget]);
   const edges = model.links.map((link) => {
     const source = model.tasks.find((task) => task.id === link.source)!;
     const target = model.tasks.find((task) => task.id === link.target)!;

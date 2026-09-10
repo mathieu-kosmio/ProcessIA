@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-test('T001 : demande écrite, validation et rechargement du canevas', async ({ page }) => {
+test('T001 : demande écrite, validation et rechargement du canevas', async ({ page, request }) => {
+  const before = await request
+    .get('/api/dossiers/demo-kosmio/models/process-diagnostic')
+    .then((response) => response.json());
   await page.goto('/');
   await expect(
     page.getByRole('heading', { name: 'Réaliser un diagnostic IA', exact: true }),
@@ -9,9 +12,9 @@ test('T001 : demande écrite, validation et rechargement du canevas', async ({ p
   await page.getByRole('button', { name: 'Proposer la modification' }).click();
   await expect(page.getByRole('button', { name: 'Appliquer à la carte' })).toBeVisible();
   await page.getByRole('button', { name: 'Appliquer à la carte' }).click();
-  await expect(page.getByTestId('revision')).toHaveText('Révision 1');
+  await expect(page.getByTestId('revision')).toHaveText(`Révision ${before.revision + 1}`);
   await page.reload();
-  await expect(page.getByTestId('revision')).toHaveText('Révision 1');
+  await expect(page.getByTestId('revision')).toHaveText(`Révision ${before.revision + 1}`);
   await expect(
     page.getByText('Valider les recommandations', { exact: true }).first(),
   ).toBeVisible();

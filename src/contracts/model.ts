@@ -141,6 +141,7 @@ export const operationSchema = z.discriminatedUnion('type', [
       task_id: id,
       label: z.string().trim().min(1).max(160),
       before_id: id.optional(),
+      after_id: id.optional(),
     })
     .strict(),
 ]);
@@ -152,6 +153,7 @@ export const commandSchema = z
     model_id: id,
     base_revision: z.number().int().nonnegative(),
     origin: z.enum(['manual', 'conversation']),
+    view_snapshot: z.enum(['map', 'list']).optional(),
     operations: z.array(operationSchema).min(1).max(50),
     turn_id: id.optional(),
     statement: z.string().max(2000).optional(),

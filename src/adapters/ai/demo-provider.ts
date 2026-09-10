@@ -7,23 +7,59 @@ export const demoProvider: LanguageProvider = {
       .trim()
       .toLocaleLowerCase('fr')
       .replace(/[.!?]+$/, '');
+    const selectedTask = model.tasks.find((task) => task.id === selectedId);
+    if (normalized.startsWith('ici nous utilisons un modèle')) {
+      if (!selectedTask)
+        return {
+          clarification:
+            'Quelle tâche est concernée par ce modèle ? Sélectionnez-la puis reformulez.',
+        };
+      const specifiedLabel = text
+        .trim()
+        .match(/modèle\s+(.+?)[.!?]*$/i)?.[1]
+        ?.trim();
+      const label = specifiedLabel ? `Modèle ${specifiedLabel}` : 'Modèle à préciser';
+      const informationId = `information-template-${selectedTask.id}`;
+      return {
+        operations: [
+          {
+            type: 'UPSERT_INFORMATION',
+            information_id: informationId,
+            label,
+            category: 'template',
+          },
+          {
+            type: 'LINK_INFORMATION',
+            task_id: selectedTask.id,
+            direction: 'input',
+            information_ids: [informationId],
+            knowledge: 'to_confirm',
+          },
+        ],
+      };
+    }
+
     let target: string | undefined;
+    let relation: 'before_id' | 'after_id' = 'before_id';
     if (normalized === 'ajoute une validation avant la restitution')
       target = model.tasks.find((task) => task.id === 'task-restitution')?.id;
-    if (normalized === 'ajoute une validation avant cette tâche')
-      target = model.tasks.find((task) => task.id === selectedId)?.id;
+    if (normalized === 'ajoute une validation avant cette tâche') target = selectedTask?.id;
+    if (normalized === 'ajoute une validation après cette tâche') {
+      target = selectedTask?.id;
+      relation = 'after_id';
+    }
     if (!target)
       return {
         clarification:
-          'Cette démonstration reconnaît « Ajoute une validation avant la restitution » ou « Ajoute une validation avant cette tâche » avec une sélection. Vous pouvez aussi modifier la carte directement.',
+          'Précisez la tâche concernée. La démonstration peut ajouter une validation avant ou après une tâche sélectionnée, ou rattacher un modèle à la sélection.',
       };
     return {
       operations: [
         {
           type: 'ADD_TASK',
           task_id: randomUUID(),
-          label: 'Valider les recommandations',
-          before_id: target,
+          label: relation === 'after_id' ? 'Valider le modèle' : 'Valider les recommandations',
+          [relation]: target,
         },
       ],
     };

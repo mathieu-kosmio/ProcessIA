@@ -1,6 +1,6 @@
 # ProcessIA · Suivi de développement
 
-Version 0.6.0, 10 septembre 2026. Développement local en cours, par tranches verticales TDD.
+Version 0.7.0, 10 septembre 2026. Développement local en cours, par tranches verticales TDD.
 
 | Tranche | Parcours principal | Résultat | État |
 | --- | --- | --- | --- |
@@ -9,7 +9,7 @@ Version 0.6.0, 10 septembre 2026. Développement local en cours, par tranches ve
 | T003 | US04 | Documenter rôles, outils et informations | Vérifié localement |
 | T004 | US02 | Apporter une source par MCP | Vérifié localement |
 | T005 | US01 | Partager une projection maîtrisée | Vérifié localement |
-| T006 | US03 | Relier dialogue écrit, sélection et commandes | Non commencé |
+| T006 | US03 | Relier dialogue écrit, sélection et commandes | Vérifié localement |
 | T007 | US03 | Ajouter la voix et les reprises | Non commencé |
 | T008 | US04 | Compléter la navigation et le profil BPMN | Non commencé |
 | T009 | US05 | Assister et consolider les entretiens | Non commencé |
@@ -107,3 +107,22 @@ Premier comportement visé : sélectionner un passage d'une source privée, pré
 Preuve : `docs/validation/T005.md`. Vérification consolidée : 24 tests d'intégration et de contrat, build TypeScript/Vite et 9 parcours Chromium réussis.
 
 Limites : l'identité responsable reste synthétique dans les tests et le studio local reste ouvert en mode consultant. La projection porte une connaissance textuelle autonome, sans carte partagée complète, moteur de recherche, génération IA ou export. Ces surfaces seront vérifiées dans leurs tranches respectives. La vérification juste avant remise est appliquée à chaque lecture HTTP ; aucun traitement différé de restitution n'existe encore.
+
+## T006 · Dialogue contextualisé et enrichissement documentaire
+
+Statut : vérifié localement le 10 septembre 2026. Révision Git : jalon T006 documenté dans l'historique du dépôt.
+
+Premier comportement visé : sélectionner une tâche, formuler une modification avec une référence contextuelle, conserver la cible et la vue du début du tour, puis appliquer ou suspendre la commande selon la révision. Une source contradictoire doit préserver toute valeur confirmée et produire une divergence avec ses provenances.
+
+| Cycle | Exigences | Rouge observé | Résultat vérifié |
+| --- | --- | --- | --- |
+| Contexte du tour | FR-020, FR-026, TC-020, TC-026 | La phrase « Ici nous utilisons un modèle » produisait seulement une clarification générique et la vue active n'était pas conservée | Dossier, modèle, vue, sélection et révision sont figés ; l'information documentaire vise l'identifiant capturé |
+| Cible visible | FR-020, FR-026 | La proposition affichait « Modifier la tâche sélectionnée » sans cible ni révision | Le dialogue nomme la cible et la révision ; la carte ou la liste conserve un repère doré si la sélection courante change |
+| Commande atomique | FR-024, TC-024 | L'ajout contextuel après une tâche n'était pas reconnu | La tâche et ses deux liens sont créés dans une transaction, reliés à l'énoncé puis restaurés ensemble par annulation |
+| Obsolescence | FR-020, TC-020 | Une proposition absente devenait une commande invalide | Une proposition préparée sur une ancienne révision est suspendue sans mutation et demande une nouvelle relecture |
+| Divergence documentaire | FR-014, TC-014 | Le service d'enrichissement et son historique n'existaient pas | Un rôle contradictoire conserve le rôle confirmé et enregistre les provenances du modèle et du passage source |
+| Aperçu et décision | FR-014, TC-014 | Aucun avant/après ni motif de refus ne pouvait être conservé | Une proposition compatible expose l'avant/après ; l'acceptation produit un état à confirmer ; le refus et son motif restent consultables |
+
+Preuve : `docs/validation/T006.md`. Vérification consolidée : 31 tests d'intégration et de contrat, build TypeScript/Vite et 10 parcours Chromium réussis.
+
+Limites : le fournisseur de langage reste déterministe et reconnaît un petit ensemble de formulations de démonstration. L'extraction automatique d'une connaissance candidate depuis le texte d'une source n'est pas réalisée ; l'API reçoit une proposition structurée avec une référence de passage validée. L'enrichissement couvre uniquement le rôle d'une tâche. La règle de conflit suspend encore toute proposition dès que la révision du modèle change, y compris lorsqu'une autre tâche a été modifiée. La qualification des variantes temporelles, la suggestion de navigation vers une cible hors écran et la clarification présentant plusieurs tâches homonymes restent à développer. Les règles détaillées de décision sur les divergences restent proposées et ne sont pas présentées comme ratifiées.

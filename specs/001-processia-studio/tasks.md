@@ -119,9 +119,9 @@ Le comportement est lié à une exigence ; l’échec initial du test a été ob
 
 ### T006 · Relier dialogue écrit, sélection et commandes
 
-- [ ] **[US03] T006-R** : écrire le prochain test public pour le comportement : Une demande contextualisée modifie la bonne tâche ; une proposition obsolète est clarifiée ; un enrichissement documentaire préserve les valeurs confirmées. Observer son échec pour la bonne raison.
-- [ ] **[US03] T006-G** : implémenter le minimum qui satisfait ce test ; exécuter les vérifications pertinentes.
-- [ ] **[US03] T006-F** : refactoriser avec tests au vert, mettre à jour la trace ; répéter R/G/F pour le comportement suivant.
+- [x] **[US03] T006-R** : écrire le prochain test public pour le comportement : Une demande contextualisée modifie la bonne tâche ; une proposition obsolète est clarifiée ; un enrichissement documentaire préserve les valeurs confirmées. Observer son échec pour la bonne raison.
+- [x] **[US03] T006-G** : implémenter le minimum qui satisfait ce test ; exécuter les vérifications pertinentes.
+- [x] **[US03] T006-F** : refactoriser avec tests au vert, mettre à jour la trace ; répéter R/G/F pour le comportement suivant.
 
 **Références :** FR-014, FR-020, FR-024, FR-026.
 

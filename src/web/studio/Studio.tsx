@@ -234,6 +234,7 @@ export function Studio() {
         model_id: model.id,
         base_revision: model.revision,
         text,
+        view,
         selected_id: selected,
       });
       setProposal(result);
@@ -244,6 +245,7 @@ export function Studio() {
     }
   }
   const task = model?.tasks.find((task) => task.id === selected);
+  const proposalTarget = proposal?.context?.selected_id;
   const dossier = dossiers.find((item) => item.id === activeDossier);
   return (
     <div className="app-shell">
@@ -420,6 +422,7 @@ export function Studio() {
                     <Canvas
                       model={model}
                       selected={selected}
+                      proposalTarget={proposalTarget}
                       busy={busy}
                       onMove={(id, position, base) =>
                         apply(manual([{ type: 'MOVE_ELEMENT', element_id: id, position }], base))
@@ -434,6 +437,8 @@ export function Studio() {
                       {model.tasks.map((task, index) => (
                         <button
                           key={task.id}
+                          data-proposal-target={task.id === proposalTarget ? 'true' : undefined}
+                          className={task.id === proposalTarget ? 'proposal-target' : undefined}
                           onClick={() => {
                             setSelected(task.id);
                             setShowHistory(false);
@@ -544,14 +549,33 @@ export function Studio() {
                       : 'Précision nécessaire'}
                   </strong>
                   <p>{proposal.message}</p>
+                  {proposal.context && (
+                    <p className="proposal-context" data-testid="proposal-context">
+                      <span>Contexte figé</span>
+                      {proposal.context.selected_label ? (
+                        <>
+                          {' '}
+                          · Concerne <strong>{proposal.context.selected_label}</strong>
+                        </>
+                      ) : (
+                        <> · Aucune tâche sélectionnée</>
+                      )}{' '}
+                      · {proposal.context.view === 'map' ? 'Carte' : 'Liste'} · Révision{' '}
+                      {proposal.context.revision}
+                    </p>
+                  )}
                   {proposal.command && (
                     <>
                       <ul>
                         {proposal.command.operations.map((operation, index) => (
                           <li key={index}>
                             {operation.type === 'ADD_TASK'
-                              ? `Ajouter « ${operation.label} »${operation.before_id ? ` avant « ${model.tasks.find((task) => task.id === operation.before_id)?.label ?? 'la tâche sélectionnée'} »` : ''}.`
-                              : 'Modifier la tâche sélectionnée.'}
+                              ? `Ajouter « ${operation.label} »${operation.before_id ? ` avant « ${model.tasks.find((task) => task.id === operation.before_id)?.label ?? 'la tâche sélectionnée'} »` : operation.after_id ? ` après « ${model.tasks.find((task) => task.id === operation.after_id)?.label ?? 'la tâche sélectionnée'} »` : ''}.`
+                              : operation.type === 'UPSERT_INFORMATION'
+                                ? `Préparer l’information « ${operation.label} » comme ${operation.category === 'template' ? 'modèle documentaire' : 'information métier'}.`
+                                : operation.type === 'LINK_INFORMATION'
+                                  ? `Rattacher cette information à « ${model.tasks.find((task) => task.id === operation.task_id)?.label ?? 'la tâche ciblée'} » avec l’état à confirmer.`
+                                  : 'Modifier la tâche ciblée.'}
                           </li>
                         ))}
                       </ul>

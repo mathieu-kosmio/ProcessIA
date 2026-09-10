@@ -6,6 +6,7 @@ import { demoProvider } from '../adapters/ai/demo-provider.ts';
 import { z } from 'zod';
 import { SourceError, type SourceService } from '../application/sources/service.ts';
 import { SharingError, type SharingService } from '../application/sharing/service.ts';
+import { EnrichmentError, type EnrichmentService } from '../application/interviews/enrichment.ts';
 import {
   createSharePreviewSchema,
   publishShareSchema,
@@ -18,6 +19,7 @@ const proposalSchema = z
     model_id: z.string().min(1).max(120),
     base_revision: z.number().int().nonnegative(),
     text: z.string().trim().min(1).max(2000),
+    view: z.enum(['map', 'list']).optional(),
     selected_id: z.string().max(120).optional(),
   })
   .strict();
@@ -26,6 +28,23 @@ const dossierSchema = z
     name: z.string().trim().min(1).max(160),
     activity: z.string().trim().min(1).max(500).nullable(),
   })
+  .strict();
+const roleEnrichmentSchema = z
+  .object({
+    task_id: z.string().min(1).max(120),
+    source_id: z.string().min(1).max(120),
+    source_version: z.number().int().positive(),
+    passage_id: z.string().min(1).max(120),
+    proposed_role: z
+      .object({
+        role_id: z.string().min(1).max(120),
+        label: z.string().trim().min(1).max(160),
+      })
+      .strict(),
+  })
+  .strict();
+const rejectEnrichmentSchema = z
+  .object({ reason: z.string().trim().max(1000).optional() })
   .strict();
 class HttpError extends Error {
   constructor(
@@ -63,7 +82,11 @@ export function createAppServer(
   service: ModelService,
   fallback?: (req: IncomingMessage, res: ServerResponse) => void,
   session: Session = demoSession,
-  capabilities: { sources?: SourceService; sharing?: SharingService } = {},
+  capabilities: {
+    sources?: SourceService;
+    sharing?: SharingService;
+    enrichments?: EnrichmentService;
+  } = {},
 ) {
   return createServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -135,6 +158,65 @@ export function createAppServer(
         json(res, 200, await proposeChanges(service, session, parsed.data, demoProvider));
         return;
       }
+      const enrichmentsMatch = /^\/api\/dossiers\/([\w-]+)\/models\/([\w-]+)\/enrichments$/.exec(
+        path,
+      );
+      if (req.method === 'GET' && enrichmentsMatch && capabilities.enrichments) {
+        json(
+          res,
+          200,
+          capabilities.enrichments.list(session, enrichmentsMatch[1], enrichmentsMatch[2]),
+        );
+        return;
+      }
+      const roleEnrichmentMatch =
+        /^\/api\/dossiers\/([\w-]+)\/models\/([\w-]+)\/enrichments\/role$/.exec(path);
+      if (req.method === 'POST' && roleEnrichmentMatch && capabilities.enrichments) {
+        const parsed = roleEnrichmentSchema.safeParse(await body(req));
+        if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+        json(
+          res,
+          201,
+          capabilities.enrichments.proposeRole(session, roleEnrichmentMatch[1], {
+            model_id: roleEnrichmentMatch[2],
+            ...parsed.data,
+          }),
+        );
+        return;
+      }
+      const enrichmentActionMatch =
+        /^\/api\/dossiers\/([\w-]+)\/models\/([\w-]+)\/enrichments\/([\w-]+)\/(accept|reject)$/.exec(
+          path,
+        );
+      if (req.method === 'POST' && enrichmentActionMatch && capabilities.enrichments) {
+        if (enrichmentActionMatch[4] === 'accept') {
+          json(
+            res,
+            200,
+            capabilities.enrichments.accept(
+              session,
+              enrichmentActionMatch[1],
+              enrichmentActionMatch[2],
+              enrichmentActionMatch[3],
+            ),
+          );
+          return;
+        }
+        const parsed = rejectEnrichmentSchema.safeParse(await body(req));
+        if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+        json(
+          res,
+          200,
+          capabilities.enrichments.reject(
+            session,
+            enrichmentActionMatch[1],
+            enrichmentActionMatch[2],
+            enrichmentActionMatch[3],
+            parsed.data.reason,
+          ),
+        );
+        return;
+      }
       const sourcesMatch = /^\/api\/dossiers\/([\w-]+)\/sources$/.exec(path);
       if (req.method === 'GET' && sourcesMatch && capabilities.sources) {
         json(res, 200, capabilities.sources.list(session, sourcesMatch[1]));
@@ -203,19 +285,27 @@ export function createAppServer(
         (error instanceof SourceError && error.code === 'ACCESS_DENIED') ||
         (error instanceof SharingError && error.code === 'ACCESS_DENIED')
           ? 403
-          : error instanceof SharingError &&
-              ['IDEMPOTENCY_CONFLICT', 'PREVIEW_INVALID', 'VERSION_CONFLICT'].includes(error.code)
+          : error instanceof EnrichmentError && error.code === 'MODEL_CONFLICT'
             ? 409
-            : error instanceof SourceError
+            : error instanceof EnrichmentError
               ? 400
-              : error instanceof HttpError
-                ? error.status
-                : 500;
+              : error instanceof SharingError &&
+                  ['IDEMPOTENCY_CONFLICT', 'PREVIEW_INVALID', 'VERSION_CONFLICT'].includes(
+                    error.code,
+                  )
+                ? 409
+                : error instanceof SourceError
+                  ? 400
+                  : error instanceof HttpError
+                    ? error.status
+                    : 500;
       json(res, status, {
         code:
           error instanceof AccessDenied
             ? 'ACCESS_DENIED'
-            : error instanceof SourceError || error instanceof SharingError
+            : error instanceof SourceError ||
+                error instanceof SharingError ||
+                error instanceof EnrichmentError
               ? error.code
               : error instanceof HttpError
                 ? error.code
@@ -223,7 +313,9 @@ export function createAppServer(
         message:
           status === 403
             ? 'Dossier indisponible pour cet accès.'
-            : error instanceof SourceError || error instanceof SharingError
+            : error instanceof SourceError ||
+                error instanceof SharingError ||
+                error instanceof EnrichmentError
               ? error.message
               : 'La demande a échoué. Vos modifications déjà enregistrées sont conservées.',
       });

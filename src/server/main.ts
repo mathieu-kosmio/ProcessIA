@@ -6,6 +6,7 @@ import { ModelService, demoSession } from '../application/model/service.ts';
 import type { ViteDevServer } from 'vite';
 import { SourceService } from '../application/sources/service.ts';
 import { SharingService } from '../application/sharing/service.ts';
+import { EnrichmentService } from '../application/interviews/enrichment.ts';
 
 const requestedDatabasePath = process.env.PROCESSIA_DB_PATH ?? resolve('.local/processia.sqlite');
 const ephemeralDatabase = requestedDatabasePath === ':memory:';
@@ -16,6 +17,7 @@ mkdirSync(dirname(databasePath), { recursive: true });
 const service = new ModelService(databasePath);
 const sources = new SourceService(databasePath);
 const sharing = new SharingService(databasePath);
+const enrichments = new EnrichmentService(databasePath, service, sources);
 sources.add(demoSession, {
   dossier_id: 'demo-kosmio',
   idempotency_key: 'demo-source-cadrage-v1',
@@ -63,7 +65,7 @@ const server = createAppServer(
     res.end(req.method === 'HEAD' ? undefined : readFileSync(file));
   },
   demoSession,
-  { sources, sharing },
+  { sources, sharing, enrichments },
 );
 if (!production) {
   const { createServer } = await import('vite');
@@ -76,6 +78,7 @@ server.listen(port, '127.0.0.1', () =>
 async function shutdown() {
   await vite?.close();
   server.close(() => {
+    enrichments.close();
     sharing.close();
     sources.close();
     service.close();

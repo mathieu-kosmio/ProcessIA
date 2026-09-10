@@ -61,7 +61,7 @@ export class AccessDenied extends Error {
 }
 export class ModelService {
   private db: DatabaseSync;
-  constructor(path: string) {
+  constructor(path: string, seed: Model = initialModel) {
     this.db = new DatabaseSync(path);
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
       CREATE TABLE IF NOT EXISTS models (dossier_id TEXT, id TEXT, data TEXT NOT NULL, PRIMARY KEY(dossier_id, id));
@@ -86,10 +86,10 @@ export class ModelService {
     seedAccess.run('demo-kosmio', demoSession.user_id, 'consultant', 'shared', 1, 'active');
     this.db
       .prepare('INSERT OR IGNORE INTO models VALUES (?, ?, ?)')
-      .run(initialModel.dossier_id, initialModel.id, JSON.stringify(initialModel));
+      .run(seed.dossier_id, seed.id, JSON.stringify(seed));
     this.db
-      .prepare('INSERT OR IGNORE INTO revisions VALUES (?, ?, 0, ?, NULL)')
-      .run(initialModel.dossier_id, initialModel.id, JSON.stringify(initialModel));
+      .prepare('INSERT OR IGNORE INTO revisions VALUES (?, ?, ?, ?, NULL)')
+      .run(seed.dossier_id, seed.id, seed.revision, JSON.stringify(seed));
   }
   execute(session: Session, input: unknown): CommandResult {
     this.db.exec('BEGIN IMMEDIATE');
@@ -272,13 +272,15 @@ export class ModelService {
         }
         continue;
       }
-      const target = model.tasks.find((task) => task.id === operation.before_id);
-      if (
-        model.tasks.some((task) => task.id === operation.task_id) ||
-        (operation.before_id && !target)
-      )
+      if (operation.before_id && operation.after_id) return rejected();
+      const targetId = operation.before_id ?? operation.after_id;
+      const target = model.tasks.find((task) => task.id === targetId);
+      if (model.tasks.some((task) => task.id === operation.task_id) || (targetId && !target))
         return rejected();
-      const position = { x: target?.position.x ?? 70, y: (target?.position.y ?? 400) - 160 };
+      const position = {
+        x: target?.position.x ?? 70,
+        y: (target?.position.y ?? 400) + (operation.after_id ? 160 : -160),
+      };
       while (
         model.tasks.some(
           (task) =>
@@ -300,7 +302,7 @@ export class ModelService {
           outputs: emptyReference(),
         },
       });
-      if (target) {
+      if (target && operation.before_id) {
         model.links = model.links.map((link) =>
           link.target === target.id ? { ...link, target: operation.task_id } : link,
         );
@@ -308,6 +310,16 @@ export class ModelService {
           id: randomUUID(),
           source: operation.task_id,
           target: target.id,
+          type: 'sequence',
+        });
+      } else if (target && operation.after_id) {
+        model.links = model.links.map((link) =>
+          link.source === target.id ? { ...link, source: operation.task_id } : link,
+        );
+        model.links.push({
+          id: randomUUID(),
+          source: target.id,
+          target: operation.task_id,
           type: 'sequence',
         });
       }
