@@ -127,6 +127,8 @@ Publier une représentation explicitement revue pour l’entreprise.
 - Le contenu approuvé est une version précise, pas un partage automatique de toutes les mises à jour.
 - Référence source privée, titre et extrait restent masqués ; le client voit seulement une provenance générique autorisée.
 
+**Mise en œuvre locale T005 :** `sharing_previews` conserve la sélection privée et la formulation à relire. `sharing_publications` porte le contenu approuvé et son état versionné. `sharing_events` trace publication et retrait ; `sharing_idempotency` empêche un double partage au rejeu. La projection responsable est construite sans titre, identifiant, URL ni extrait de source. Le consultant disposant encore de l'accès privé peut retrouver ces détails.
+
 ### ENT-11 · Graphe de processus
 
 Modèle métier faisant autorité pour une version actuelle ou cible.

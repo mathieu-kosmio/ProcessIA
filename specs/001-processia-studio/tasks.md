@@ -35,7 +35,7 @@ Le comportement est lié à une exigence ; l’échec initial du test a été ob
 
 ## 18 · Plan de tâches et traçabilité TDD
 
-**État au 10 septembre 2026 : T001 à T004 vérifiées localement ; T005 à T012 non commencées.** Les chemins sont proposés dans le plan et sont confirmés ou ajustés à chaque tranche. Chaque ligne représente une tranche métier ; à l’intérieur, traiter un seul comportement par cycle Red → Green → Refactor. Les invariants de qualité et de sécurité sont intégrés dès les tranches concernées, T012 vérifie leur tenue globale.
+**État au 10 septembre 2026 : T001 à T005 vérifiées localement ; T006 à T012 non commencées.** Les chemins sont proposés dans le plan et sont confirmés ou ajustés à chaque tranche. Chaque ligne représente une tranche métier ; à l’intérieur, traiter un seul comportement par cycle Red → Green → Refactor. Les invariants de qualité et de sécurité sont intégrés dès les tranches concernées, T012 vérifie leur tenue globale.
 
 ### T001 · Créer la tranche modèle et canevas persisté
 
@@ -103,9 +103,9 @@ Le comportement est lié à une exigence ; l’échec initial du test a été ob
 
 ### T005 · Partager une projection maîtrisée
 
-- [ ] **[US01] T005-R** : écrire le prochain test public pour le comportement : Le client voit la synthèse partagée sans extrait, titre ni référence privée ; la révocation est appliquée. Observer son échec pour la bonne raison.
-- [ ] **[US01] T005-G** : implémenter le minimum qui satisfait ce test ; exécuter les vérifications pertinentes.
-- [ ] **[US01] T005-F** : refactoriser avec tests au vert, mettre à jour la trace ; répéter R/G/F pour le comportement suivant.
+- [x] **[US01] T005-R** : écrire le prochain test public pour le comportement : Le client voit la synthèse partagée sans extrait, titre ni référence privée ; la révocation est appliquée. Observer son échec pour la bonne raison.
+- [x] **[US01] T005-G** : implémenter le minimum qui satisfait ce test ; exécuter les vérifications pertinentes.
+- [x] **[US01] T005-F** : refactoriser avec tests au vert, mettre à jour la trace ; répéter R/G/F pour le comportement suivant.
 
 **Références :** FR-003, FR-004, FR-005, FR-006, FR-007.
 

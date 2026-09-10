@@ -1,6 +1,6 @@
 # ProcessIA · Suivi de développement
 
-Version 0.5.0, 10 septembre 2026. Développement local en cours, par tranches verticales TDD.
+Version 0.6.0, 10 septembre 2026. Développement local en cours, par tranches verticales TDD.
 
 | Tranche | Parcours principal | Résultat | État |
 | --- | --- | --- | --- |
@@ -8,7 +8,7 @@ Version 0.5.0, 10 septembre 2026. Développement local en cours, par tranches ve
 | T002 | US01 | Borner le dossier et les accès | Vérifié localement |
 | T003 | US04 | Documenter rôles, outils et informations | Vérifié localement |
 | T004 | US02 | Apporter une source par MCP | Vérifié localement |
-| T005 | US01 | Partager une projection maîtrisée | Non commencé |
+| T005 | US01 | Partager une projection maîtrisée | Vérifié localement |
 | T006 | US03 | Relier dialogue écrit, sélection et commandes | Non commencé |
 | T007 | US03 | Ajouter la voix et les reprises | Non commencé |
 | T008 | US04 | Compléter la navigation et le profil BPMN | Non commencé |
@@ -89,3 +89,21 @@ Premier comportement visé : depuis un client MCP, cibler explicitement un dossi
 Preuve : `docs/validation/T004.md`. Vérification consolidée : 23 tests d'intégration et de contrat, build TypeScript/Vite et 8 parcours Chromium réussis.
 
 Limites : le serveur utilise une identité locale synthétique et le transport stdio. Le profil accepté est limité à `text` et `transcript`, avec 64 Kio par source comme limite locale de développement. PDF, DOCX, OCR et premier client pilote restent ouverts dans DEC-06. La segmentation sépare les paragraphes sans analyse sémantique ; elle ne produit encore ni connaissance candidate, ni état partiel, ni reprise. L'actualisation explicite d'une source vers une nouvelle version reste à implémenter. Ces absences correspondent aux critères AC-010-3, AC-011-2, AC-011-3 et aux associations de connaissances de FR-012, qui ne sont donc pas déclarés réalisés.
+
+## T005 · Projection partagée maîtrisée
+
+Statut : vérifié localement le 10 septembre 2026. Révision Git : jalon T005 documenté dans l'historique du dépôt.
+
+Premier comportement visé : sélectionner un passage d'une source privée, prévisualiser une reformulation, la confirmer explicitement, la consulter avec une identité responsable sans métadonnée privée, puis retirer son partage.
+
+| Cycle | Exigences | Rouge observé | Résultat vérifié |
+| --- | --- | --- | --- |
+| Prévisualisation | FR-003, FR-004, TC-003, TC-004 | Le test échouait sur l'absence du service de partage | Une prévisualisation versionnée reste privée et n'apparaît pas dans la projection responsable |
+| Publication explicite | FR-004, FR-005, TC-004, TC-005 | Aucun état ne reliait une formulation approuvée à sa provenance | Confirmation idempotente avec auteur, date, version, source et passage privés |
+| Projection filtrée | FR-005, FR-006, TC-005, TC-006 | Aucune vue partagée distincte de la préparation | Le responsable reçoit uniquement la formulation et une provenance générique ; le consultant retrouve le détail privé |
+| Annulation et retrait | FR-004, FR-007, TC-004, TC-007 | Aucun cycle de vie de partage | Annuler une prévisualisation ne publie rien ; retirer une publication crée une nouvelle version et bloque la lecture suivante |
+| Studio web | FR-004, FR-005 | Aucun contrôle visuel du partage | Panneau Sources & partage avec extrait privé, aperçu responsable, confirmation et retrait |
+
+Preuve : `docs/validation/T005.md`. Vérification consolidée : 24 tests d'intégration et de contrat, build TypeScript/Vite et 9 parcours Chromium réussis.
+
+Limites : l'identité responsable reste synthétique dans les tests et le studio local reste ouvert en mode consultant. La projection porte une connaissance textuelle autonome, sans carte partagée complète, moteur de recherche, génération IA ou export. Ces surfaces seront vérifiées dans leurs tranches respectives. La vérification juste avant remise est appliquée à chaque lecture HTTP ; aucun traitement différé de restitution n'existe encore.

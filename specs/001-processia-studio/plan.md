@@ -59,7 +59,7 @@ Cette structure est une cible de plan, pas une arborescence applicative déjà c
 C-01 à C-09 : couverts dans le plan proposé. Ratification et vérification sur implémentation restent ouvertes. Complexité retenue : un service applicatif, traitements asynchrones bornés ; aucune infrastructure agentique supplémentaire pour le diagnostic.
 
 
-## Mise en œuvre locale T001 à T004, 9 et 10 septembre 2026
+## Mise en œuvre locale T001 à T005, 9 et 10 septembre 2026
 
 La demande de lancement autorise une première tranche synthétique. Voir `docs/adr/0001-tranche-locale-modele.md` pour le choix local réversible. Versions réellement installées : React 19.3.0, React Flow 12.11.6, Vite 8.2.2, TypeScript 7.0.2, Zod 4.5.4, Playwright 1.63.0, tsx 4.23.13 ; Node testé : 22.14.0, SQLite embarqué : 3.47.2. Le fichier de verrouillage npm fait autorité pour les dépendances transitives.
 
@@ -72,3 +72,7 @@ T003 conserve rôles, outils et informations dans des registres du modèle de do
 T004 ajoute une passerelle MCP locale fondée sur `@modelcontextprotocol/server` et `@modelcontextprotocol/client` 2.0.0, exposée en stdio. Le service de sources partage la base SQLite avec les accès du studio : identité, dossier, périmètre privé, droit d'écriture et état actif sont relus avant chaque mutation. Les textes et transcriptions sont versionnés, empreintés, segmentés par paragraphes et associés à un traitement persistant. Les schémas exécutables sont dans `src/contracts/source.ts`.
 
 Le transport stdio est un choix local réversible compatible avec les clients capables de lancer un sous-processus. Le premier client du pilote reste à nommer. Les formats PDF/DOCX, l'OCR, l'actualisation explicite, les traitements partiels et la reprise restent derrière des adaptateurs futurs conformément à DEC-06.
+
+T005 ajoute un service de partage sur la même base relationnelle. Une prévisualisation référence une version précise de source et un passage privé, mais expose uniquement la reformulation candidate dans l'aperçu. La confirmation crée une publication versionnée et un événement d'audit. La projection responsable est reconstruite côté serveur à partir des seules publications actives et vérifie l'accès partagé à chaque lecture. Le retrait produit une nouvelle version révoquée sans supprimer la provenance privée.
+
+Le studio local expose ce cycle dans un panneau dédié. Une note synthétique privée est ajoutée de façon idempotente au dossier de démonstration afin que le parcours reste essayable sans client MCP externe. Cette donnée porte un marqueur explicite utilisé pour vérifier l'absence de fuite dans la projection publiée.

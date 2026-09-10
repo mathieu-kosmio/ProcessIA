@@ -106,6 +106,11 @@ Routes locales :
 - `GET /api/dossiers/:dossier/models/:model/history` : journal des révisions du dossier local.
 - `POST /api/proposals` : demande écrite via l'adaptateur simulé ; aucun changement persistant.
 - `POST /api/commands` : application atomique, contrôle de révision et idempotence.
+- `GET /api/dossiers/:dossier/sources` et `GET /api/dossiers/:dossier/sources/:source/status` : sources et passages privés autorisés.
+- `POST /api/dossiers/:dossier/sharing/previews` : prévisualisation privée d'une reformulation sélectionnée.
+- `POST /api/dossiers/:dossier/sharing/publications` : confirmation idempotente du partage.
+- `GET /api/dossiers/:dossier/shared-knowledge` : projection filtrée selon les droits relus au moment de la réponse.
+- `POST /api/dossiers/:dossier/shared-knowledge/:publication/revoke` : retrait versionné d'une publication.
 
 L'historique et la liste des dossiers ne sont pas encore paginés. HTTP local exige un Host `127.0.0.1:port` et une origine identique pour les POST. Codes HTTP : 403 accès, 409 concurrence, 422 commande invalide, 400 JSON invalide, 413 corps trop grand, 415 contenu autre que JSON. Les réponses de proposition utilisent leur statut métier.
 
@@ -125,3 +130,9 @@ Le point d'entrée `npm run mcp` sert MCP sur stdin/stdout. Il expose quatre out
 | `processia_get_source_status` | Retourne version, traitement, couverture et passages positionnés de la source autorisée. |
 
 La limite de 64 Kio est une borne de développement, pas un quota pilote validé. L'import enregistre séparément `source_date`, qui peut rester null, et `imported_at`. Une clé rejouée avec le même contenu retourne le résultat original ; un contenu différent retourne `IDEMPOTENCY_CONFLICT`. La segmentation locale par paragraphes termine de façon synchrone avec l'état `completed`. Elle prépare la provenance, sans produire encore de connaissance candidate. Les outils d'actualisation et de reprise de la surface cible ne sont pas exécutés par T004.
+
+## Projection partagée locale exécutée par T005
+
+Le contrat HTTP sépare prévisualisation, confirmation et retrait. La prévisualisation n'est jamais retournée par la lecture partagée. La confirmation porte sur son identifiant exact et échoue si la source courante ne correspond plus à la version prévisualisée. Un rejeu identique retourne la publication existante ; une même clé avec une autre prévisualisation échoue.
+
+La réponse partagée contient l'identifiant et la version de publication, le texte approuvé, la date de publication et une provenance générique indiquant que les détails privés sont indisponibles. Si la session possède aussi le périmètre privé, le même service enrichit la provenance avec le titre et le passage. Le retrait exige la version courante, écrit un événement et exclut la publication des lectures suivantes.

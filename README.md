@@ -17,7 +17,7 @@ Une extension vers un harnais déployable sur VPS avec Docker et éventuellement
 
 ## Statut
 
-Tranches T001 à T004 implémentées localement : dossiers isolés, carte synthétique persistée, commandes contrôlées, dialogue simulé, édition, historique, fiches de tâches et ingestion textuelle privée via MCP. Le MVP complet reste à développer.
+Tranches T001 à T005 implémentées localement : dossiers isolés, carte synthétique persistée, commandes contrôlées, dialogue simulé, édition, historique, fiches de tâches, ingestion textuelle privée via MCP et publication maîtrisée d'une reformulation. Le MVP complet reste à développer.
 
 Premier cas pilote : Kosmio. Second terrain prévu : SOCAMEX, dans le cadre de PerfIA.
 
@@ -83,6 +83,8 @@ Le profil local accepte 64 Kio par texte. La source est privée, les droits pers
 5. Sélectionner une tâche, corriger son libellé et renseigner son rôle, son outil, son entrée et sa sortie.
 6. Recharger la page pour vérifier la persistance de la fiche, ou déplacer le bloc sur la carte.
 7. Annuler la dernière modification avec le bouton fléché ; ouvrir le journal pour retrouver les révisions.
+8. Ouvrir « Sources & partage », choisir le passage synthétique privé et rédiger une formulation partageable.
+9. Prévisualiser la vue responsable, confirmer le partage, puis vérifier son retrait dans la liste.
 
 Le dialogue est un adaptateur déterministe : seules la phrase ci-dessus et « Ajoute une validation avant cette tâche » avec une sélection sont reconnues. Toute autre demande reçoit une clarification. Aucun appel LLM ni traitement vocal n'est activé.
 
@@ -106,3 +108,4 @@ Le mode local fournit une identité de consultant synthétique côté serveur. I
 - [Preuves et limites T002](docs/validation/T002.md)
 - [Preuves et limites T003](docs/validation/T003.md)
 - [Preuves et limites T004](docs/validation/T004.md)
+- [Preuves et limites T005](docs/validation/T005.md)

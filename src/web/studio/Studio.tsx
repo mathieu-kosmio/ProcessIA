@@ -11,6 +11,7 @@ import type { Proposal } from '../../application/interviews/propose.ts';
 import { Canvas } from './Canvas.tsx';
 import { TaskInspector, type TaskDetailValues } from './TaskInspector.tsx';
 import { CreateDossierDialog } from './CreateDossierDialog.tsx';
+import { SharingPanel } from '../sharing/SharingPanel.tsx';
 
 const modelPath = (dossierId: string) => `/api/dossiers/${dossierId}/models/process-diagnostic`;
 async function read<T>(path: string): Promise<T> {
@@ -131,6 +132,7 @@ export function Studio() {
   const [selected, setSelected] = useState<string>();
   const [view, setView] = useState<'map' | 'list'>('map');
   const [showHistory, setShowHistory] = useState(false);
+  const [showSharing, setShowSharing] = useState(false);
   const [text, setText] = useState('');
   const [proposal, setProposal] = useState<Proposal>();
   const [busy, setBusy] = useState(false);
@@ -156,6 +158,7 @@ export function Studio() {
     setModel(undefined);
     setSelected(undefined);
     setShowHistory(false);
+    setShowSharing(false);
     setProposal(undefined);
     try {
       await refresh(dossierId);
@@ -342,6 +345,17 @@ export function Studio() {
             >
               ↶ Journal des versions
             </button>
+            <button
+              className="secondary"
+              onClick={() => {
+                setShowSharing(!showSharing);
+                setShowHistory(false);
+                setSelected(undefined);
+              }}
+              aria-pressed={showSharing}
+            >
+              ♧ Sources & partage
+            </button>
           </div>
         </section>
         <div className="demo-note">
@@ -372,7 +386,7 @@ export function Studio() {
         ) : (
           <>
             <section
-              className={`studio ${task || showHistory ? 'with-inspector' : ''}`}
+              className={`studio ${task || showHistory || showSharing ? 'with-inspector' : ''}`}
               aria-label="Studio du processus"
             >
               <div className="canvas-shell">
@@ -504,6 +518,13 @@ export function Studio() {
                     ))}
                   </ol>
                 </aside>
+              )}
+              {showSharing && (
+                <SharingPanel
+                  key={activeDossier}
+                  dossierId={activeDossier}
+                  onClose={() => setShowSharing(false)}
+                />
               )}
             </section>
             <section className="conversation" aria-label="Dialogue de modélisation">

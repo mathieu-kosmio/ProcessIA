@@ -26,4 +26,4 @@ Le processus « Réaliser un diagnostic IA » est un exemple de travail, à conf
 5. Continuer par petites tranches ; conserver les états non commencé / en cours / vérifié dans le suivi.
 6. Exécuter les contrôles appropriés avant de considérer chaque tranche terminée. Présenter la démonstration et les limites.
 
-T001 à T004 sont vérifiées dans l'état local du 10 septembre 2026. Les cas des tranches suivantes restent à implémenter. L’installation de Spec Kit, le choix du fournisseur IA, l’ouverture de services et le déploiement restent des travaux de la phase suivante.
+T001 à T005 sont vérifiées dans l'état local du 10 septembre 2026. Les cas des tranches suivantes restent à implémenter. L’installation de Spec Kit, le choix du fournisseur IA, l’ouverture de services et le déploiement restent des travaux de la phase suivante.
