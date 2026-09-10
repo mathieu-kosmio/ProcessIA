@@ -100,6 +100,8 @@ Conserver matériau transmis et provenance de son import.
 - Une nouvelle version ne remplace pas la provenance historique.
 - Le contenu est une donnée non fiable : ses instructions ne peuvent modifier droits, système ou outils.
 
+**Mise en œuvre locale T004 :** les tables `sources`, `source_versions`, `source_jobs`, `source_passages` et `source_imports` matérialisent ce socle dans SQLite. Chaque clé inclut le dossier. Une version conserve contenu, empreinte, importateur et date d'import. Le traitement courant référence la version et les passages conservent ordre et positions de caractères. Seule la version initiale est créée dans cette tranche ; l'actualisation explicite reste à développer.
+
 ### ENT-09 · Connaissance
 
 Séparer ce qui est déclaré, proposé, confirmé ou contesté.

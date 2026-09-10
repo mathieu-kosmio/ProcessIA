@@ -1,13 +1,13 @@
 # ProcessIA · Suivi de développement
 
-Version 0.4.0, 10 septembre 2026. Développement local en cours, par tranches verticales TDD.
+Version 0.5.0, 10 septembre 2026. Développement local en cours, par tranches verticales TDD.
 
 | Tranche | Parcours principal | Résultat | État |
 | --- | --- | --- | --- |
 | T001 | US04 | Créer la tranche modèle et canevas persisté | Vérifié localement |
 | T002 | US01 | Borner le dossier et les accès | Vérifié localement |
 | T003 | US04 | Documenter rôles, outils et informations | Vérifié localement |
-| T004 | US02 | Apporter une source par MCP | Non commencé |
+| T004 | US02 | Apporter une source par MCP | Vérifié localement |
 | T005 | US01 | Partager une projection maîtrisée | Non commencé |
 | T006 | US03 | Relier dialogue écrit, sélection et commandes | Non commencé |
 | T007 | US03 | Ajouter la voix et les reprises | Non commencé |
@@ -71,3 +71,21 @@ Premier comportement visé : ouvrir une fiche de tâche, renseigner un rôle, un
 Preuve : docs/validation/T003.md. Vérification consolidée : 19 tests d'intégration, build TypeScript/Vite et 8 parcours Chromium réussis.
 
 Limites : l'interface actuelle saisit une référence par catégorie. Les catégories documentaires détaillées, les contributeurs, le validateur, les personnes, les services, les échanges et la provenance restent à enrichir. La confirmation et l'absence confirmée ne sont pas encore déclenchables dans le studio car le rôle habilité à les décider reste ouvert.
+
+## T004 · Source privée par MCP
+
+Statut : vérifié localement le 10 septembre 2026. Révision Git : jalon T004 documenté dans l'historique du dépôt.
+
+Premier comportement visé : depuis un client MCP, cibler explicitement un dossier autorisé, importer une transcription privée avec une clé d'idempotence, retrouver ses passages et son traitement, puis rejouer le même appel sans doublon.
+
+| Cycle | Exigences | Rouge observé | Résultat vérifié |
+| --- | --- | --- | --- |
+| Contrat MCP et ingestion | FR-008, FR-009, TC-008, TC-009 | Le test échouait sur l'absence du service de sources et du serveur MCP | Quatre outils décrits par schémas Zod ; import texte ou transcription dans le dossier explicite |
+| Idempotence | FR-010, TC-010 | Aucun registre d'import ne permettait un rejeu stable | Même clé et même contenu retournent source, version et traitement identiques ; contenu différent refusé |
+| Traitement et passages | FR-011, FR-012, TC-011, TC-012 | L'import restait dans l'état received sans résultat consultable | Segmentation textuelle déterministe, état completed, couverture en octets et positions de caractères consultables avec les droits privés |
+| Droits et contenu non fiable | FR-008, FR-013, TC-008, TC-013 | La frontière MCP et la révocation n'étaient pas exercées | Droits relus dans SQLite avant chaque opération ; une instruction présente dans le texte reste un passage sans effet externe |
+| Transport stdio | FR-008, TC-008 | Aucun processus MCP exécutable | Un client du SDK officiel lance le serveur, négocie la connexion, liste les outils et lit l'identité synthétique |
+
+Preuve : `docs/validation/T004.md`. Vérification consolidée : 23 tests d'intégration et de contrat, build TypeScript/Vite et 8 parcours Chromium réussis.
+
+Limites : le serveur utilise une identité locale synthétique et le transport stdio. Le profil accepté est limité à `text` et `transcript`, avec 64 Kio par source comme limite locale de développement. PDF, DOCX, OCR et premier client pilote restent ouverts dans DEC-06. La segmentation sépare les paragraphes sans analyse sémantique ; elle ne produit encore ni connaissance candidate, ni état partiel, ni reprise. L'actualisation explicite d'une source vers une nouvelle version reste à implémenter. Ces absences correspondent aux critères AC-010-3, AC-011-2, AC-011-3 et aux associations de connaissances de FR-012, qui ne sont donc pas déclarés réalisés.

@@ -39,7 +39,7 @@ L’annulation est une nouvelle commande liée à la précédente. Elle conserve
 
 ### Surface MCP proposée
 
-Les noms ci-dessous sont des contrats ProcessIA proposés, pas des outils déjà installés. Le serveur devra respecter la [spécification MCP des outils](https://modelcontextprotocol.io/specification/2025-11-25/server/tools). Pour une connexion distante HTTP, le mécanisme d’autorisation sera défini selon la [spécification MCP d’autorisation](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization), avec vérification de l’audience et du périmètre. La révision de protocole retenue devra être confirmée avec le client cible.
+Les noms ci-dessous décrivent la surface cible. T004 exécute un sous-ensemble local sur le SDK TypeScript MCP 2.0.0 et la [spécification MCP 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28). Pour une connexion distante HTTP, le mécanisme d’autorisation sera défini selon la spécification MCP d’autorisation, avec vérification de l’audience et du périmètre. Le premier client cible reste à confirmer.
 
 | Outil | Entrée principale | Sortie | Droit requis |
 |---|---|---|---|
@@ -107,8 +107,21 @@ Routes locales :
 - `POST /api/proposals` : demande écrite via l'adaptateur simulé ; aucun changement persistant.
 - `POST /api/commands` : application atomique, contrôle de révision et idempotence.
 
-L'historique et la liste des dossiers ne sont pas encore paginés. HTTP local exige un Host `127.0.0.1:port` et une origine identique pour les POST. Codes HTTP : 403 accès, 409 concurrence, 422 commande invalide, 400 JSON invalide, 413 corps trop grand, 415 contenu autre que JSON. Les réponses de proposition utilisent leur statut métier. Aucun serveur MCP n'est exposé dans cette tranche.
+L'historique et la liste des dossiers ne sont pas encore paginés. HTTP local exige un Host `127.0.0.1:port` et une origine identique pour les POST. Codes HTTP : 403 accès, 409 concurrence, 422 commande invalide, 400 JSON invalide, 413 corps trop grand, 415 contenu autre que JSON. Les réponses de proposition utilisent leur statut métier.
 
 T002 ajoute `dossiers` et `dossier_access` dans SQLite. Un accès associe l'utilisateur résolu côté serveur, le dossier, le rôle applicatif, l'espace `private` ou `shared`, le droit d'écriture et l'état actif ou révoqué. Le contrôle du modèle croise toujours cet accès persistant avec sa visibilité ; une capacité de session ne réactive donc pas un accès révoqué. La méthode d'identité et les invitations externes restent DEC-03.
 
 T003 ajoute au modèle JSON versionné les registres roles, tools et information, ainsi que les références role, tools, inputs et outputs de chaque tâche. Les commandes valident l'existence et le type des références avant toute écriture ; un lot invalide reste sans effet.
+
+## Sous-ensemble MCP local exécuté par T004
+
+Le point d'entrée `npm run mcp` sert MCP sur stdin/stdout. Il expose quatre outils :
+
+| Outil exécuté | Comportement local vérifié |
+| --- | --- |
+| `processia_identity` | Retourne l'identité synthétique, les dossiers, périmètres et capacités effectives, sans secret. |
+| `processia_add_source` | Ajoute un texte ou une transcription privée de 64 Kio maximum avec dossier et clé d'idempotence explicites. |
+| `processia_list_sources` | Liste uniquement les sources privées d'un dossier autorisé. |
+| `processia_get_source_status` | Retourne version, traitement, couverture et passages positionnés de la source autorisée. |
+
+La limite de 64 Kio est une borne de développement, pas un quota pilote validé. L'import enregistre séparément `source_date`, qui peut rester null, et `imported_at`. Une clé rejouée avec le même contenu retourne le résultat original ; un contenu différent retourne `IDEMPOTENCY_CONFLICT`. La segmentation locale par paragraphes termine de façon synchrone avec l'état `completed`. Elle prépare la provenance, sans produire encore de connaissance candidate. Les outils d'actualisation et de reprise de la surface cible ne sont pas exécutés par T004.

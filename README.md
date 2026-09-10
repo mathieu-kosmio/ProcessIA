@@ -17,7 +17,7 @@ Une extension vers un harnais déployable sur VPS avec Docker et éventuellement
 
 ## Statut
 
-Tranches T001 à T003 implémentées localement : dossiers isolés, carte synthétique persistée, commandes contrôlées, dialogue simulé, édition, historique et fiches de tâches documentant rôle, outil, entrée et sortie. Le MVP complet reste à développer.
+Tranches T001 à T004 implémentées localement : dossiers isolés, carte synthétique persistée, commandes contrôlées, dialogue simulé, édition, historique, fiches de tâches et ingestion textuelle privée via MCP. Le MVP complet reste à développer.
 
 Premier cas pilote : Kosmio. Second terrain prévu : SOCAMEX, dans le cadre de PerfIA.
 
@@ -62,7 +62,19 @@ npm start
 
 Paramètres facultatifs : `PORT`, `PROCESSIA_DB_PATH` (chemin de base ou `:memory:` pour un essai jetable).
 
-## Essayer la première tranche
+## Connecter le serveur MCP local
+
+Le client MCP doit lancer la commande suivante depuis le dépôt :
+
+```sh
+npm run mcp
+```
+
+Le transport utilise stdin et stdout. Les journaux éventuels vont uniquement sur stderr. Le serveur expose `processia_identity`, `processia_add_source`, `processia_list_sources` et `processia_get_source_status`. Chaque import indique `dossier_id`, une clé d'idempotence, le titre, le type `text` ou `transcript`, le contexte d'origine, la date de source connue ou `null`, et le contenu.
+
+Le profil local accepte 64 Kio par texte. La source est privée, les droits persistants sont relus avant chaque opération et une URL contenue dans le contexte reste une provenance sans téléchargement automatique. Le même `PROCESSIA_DB_PATH` permet au studio et au serveur MCP de travailler sur les mêmes dossiers.
+
+## Essayer les tranches locales
 
 1. Ouvrir le dossier Kosmio synthétique et explorer les six tâches proposées.
 2. Créer un autre dossier dans la barre latérale ; l'activité peut rester à préciser.
@@ -87,9 +99,10 @@ Les tests navigateur compilent et démarrent une instance distincte sur le port 
 
 ## Portée de cette livraison
 
-Le mode local fournit une identité de consultant synthétique côté serveur. Il ne constitue pas une authentification de production. Identité réelle, dossiers multi-acteurs, partage client, sources MCP, fournisseurs IA/voix, diagnostic et BPMN complet restent à développer. React Flow affiche un graphe de tâches ; aucun export BPMN conforme n'est revendiqué.
+Le mode local fournit une identité de consultant synthétique côté serveur. Il ne constitue pas une authentification de production. Identité réelle, partage client, formats documentaires, fournisseurs IA/voix, diagnostic et BPMN complet restent à développer. React Flow affiche un graphe de tâches ; aucun export BPMN conforme n'est revendiqué.
 
 - [Décision d'architecture locale](docs/adr/0001-tranche-locale-modele.md)
 - [Preuves et limites T001](docs/validation/T001.md)
 - [Preuves et limites T002](docs/validation/T002.md)
 - [Preuves et limites T003](docs/validation/T003.md)
+- [Preuves et limites T004](docs/validation/T004.md)
