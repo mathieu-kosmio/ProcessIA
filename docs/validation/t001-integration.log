@@ -1,0 +1,38 @@
+
+> processia@0.1.0 test
+> node --import tsx --test --test-reporter=spec tests/integration/*.test.ts
+
+(node:95969) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ T002 / TC-001 : deux dossiers de même nom restent distincts via l’API publique (26.88325ms)
+✔ T002 / TC-002 : le responsable voit uniquement l’espace partagé de son dossier (16.976042ms)
+(node:95970) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ T001 / API : lire, proposer, appliquer et relire le modèle via HTTP (39.926834ms)
+(node:95971) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ T001 / contexte : une sélection incohérente ne peut pas autoriser une mutation (8.510125ms)
+✔ T001 / AC-024-3 : annuler restaure le graphe complet dans une nouvelle révision et conserve le journal (6.307542ms)
+✔ T001 / FR-025 : renommer une tâche conserve ses identifiants et les autres éléments (4.0885ms)
+✔ T001 / AC-025-1 : déplacer une tâche conserve son identité, ses liens et son rôle (4.840584ms)
+✔ T001 / socle FR-002 : droits vérifiés avant lecture, écriture et rejeu (5.0755ms)
+✔ T001 / contrat : un rejeu après reconnexion ne crée pas de doublon, une clé réutilisée autrement est refusée (5.388459ms)
+✔ T001 / AC-025-3 : deux connexions sur la même révision produisent une application et un conflit (4.738041ms)
+✔ T001 / TC-024 : un lot contenant une cible absente est intégralement rejeté (4.474166ms)
+✔ T001 / TC-024 : un ajout et ses liens sont retrouvés après réouverture de la base (4.946458ms)
+✔ T001 / disposition : deux ajouts successifs restent distincts sans déplacer les tâches existantes (4.688959ms)
+(node:95972) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ T001 / accès avant génération : un lecteur ne sollicite pas le fournisseur de modifications (2.155ms)
+✔ T001 / scénario écrit simulé : ajout avant restitution et clarification hors scénario (2.881042ms)
+✔ T001 / AC-025-3 : une réponse tardive après une édition manuelle est signalée comme obsolète (0.920166ms)
+✔ T001 / TC-024 : une réponse fournisseur mal formée est rejetée sans modifier le modèle (1.256542ms)
+✔ T001 / FR-024 : une proposition fournisseur prévisualisée applique une commande liée à la demande (1.200333ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 258.693833

@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "requirements": 40,
+  "acceptanceScenarios": 120,
+  "qualityRequirements": 12,
+  "chapters": 22,
+  "brokenLinks": [],
+  "consoleErrors": [],
+  "externalRequests": [],
+  "checks": [
+    "traçabilité",
+    "unicité IDs",
+    "navigation",
+    "recherche",
+    "filtres",
+    "déplier/replier",
+    "état vide",
+    "bureau",
+    "mobile",
+    "impression"
+  ],
+  "notice": "Contrôles du document HTML uniquement. Aucun test applicatif ProcessIA exécuté."
+}

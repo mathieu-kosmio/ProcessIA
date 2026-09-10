@@ -1,0 +1,68 @@
+# Plan technique proposé
+
+Statut : à compléter après clarification des fournisseurs et de la pile.
+
+## 14 · Plan technique proposé et décisions à instruire
+
+Cette partie correspond à **Plan**, séparée de la spécification du besoin. Elle définit les responsabilités techniques et les vérifications à conduire ; elle ne verrouille pas de fournisseur.
+
+### Architecture minimale proposée
+
+Une application web, un service applicatif commun aux échanges UI et MCP, une base relationnelle, un stockage privé des fichiers et un traitement asynchrone pour les extractions. Un même service peut héberger les interfaces web et MCP au pilote. Une file dédiée n’est ajoutée que si la reprise et la charge le justifient.
+
+Le modèle de processus constitue la référence persistée. Le canevas et le BPMN XML sont des représentations de ce modèle. L’IA propose des commandes structurées ; elle n’écrit pas directement dans la base ni dans une version partagée. Les règles de structure, droits et révision sont exécutées côté serveur.
+
+### Composants et responsabilités
+
+| Composant | Responsabilité | Frontière de test |
+|---|---|---|
+| Studio web | Vue macro, BPMN, sélection, fiches, commandes voix/texte | Parcours navigateur et accessibilité |
+| Service de modèle | Révisions, commandes atomiques, règles BPMN, annulation | API publique de commandes et propriétés du graphe |
+| Service de connaissance | Sources, passages, affirmations, contradictions, extraction | Contrats d’ingestion et recherche filtrée |
+| Service d’entretien | Tours de parole, contexte visuel, propositions, reprise | Session publique avec adaptateurs simulés |
+| Service de diagnostic | Constats, priorisation, roadmap et publication | Calculs déterministes et génération sourcée |
+| Passerelle MCP | Identité, droits dossier, ingestion et consultation | Client MCP de test, droits et schémas |
+| Adaptateurs IA | Reconnaissance, génération, synthèse vocale, OCR éventuel | Tests de contrat externes et évaluations séparées |
+
+### Options techniques à instruire
+
+| Choix | Proposition de travail | Vérification avant adoption |
+|---|---|---|
+| Langage | TypeScript côté web et service pour partager les contrats | Valider le cadre web, le service asynchrone et les compétences de maintien |
+| Éditeur BPMN | Évaluer bpmn-js intégré au studio | Prototype limité : création, aller-retour XML, événements d’édition, accessibilité et licence |
+| Persistance | Base relationnelle et stockage objet privé | Transactions, migrations, contrôle des accès et restauration |
+| Voix | Comparer pipeline transcription → LLM → synthèse et session vocale temps réel | Français métier, interruptions, liaison des tours aux commandes, latence, coût et conservation |
+| IA documentaire | Interface fournisseur distincte de l’éditeur | Extraction structurée, citations, contexte autorisé et qualité sur corpus |
+| Hébergement | Local pour développement ; service conteneurisable pour pilote | Identité, volumes persistants, sauvegardes, secrets et résidence des données |
+
+La [documentation bpmn-js](https://bpmn.io/toolkit/bpmn-js/walkthrough/) confirme les possibilités d’intégration d’un éditeur et de lecture/écriture BPMN XML. L’adéquation au profil ProcessIA reste à éprouver. Les versions des bibliothèques et les fournisseurs seront fixés dans un fichier de dépendances et une décision d’architecture au démarrage du développement.
+
+### Structure de code proposée pour préparer les tâches
+
+```text
+src/domain/          règles de modèle, droits, diagnostic
+src/application/     cas d’usage et transactions
+src/contracts/       commandes, résultats et schémas
+src/adapters/        persistance, MCP, IA et voix
+src/web/             canevas, fiches et entretien
+tests/domain/        règles déterministes
+tests/integration/   interfaces et transactions
+tests/contract/      MCP et fournisseurs
+tests/e2e/           parcours navigateur
+tests/fixtures/      dossiers et réponses synthétiques
+```
+
+Cette structure est une cible de plan, pas une arborescence applicative déjà créée. Les parcours V1 utilisent une seule autorité de révision et un contrôle de concurrence optimiste. L’édition simultanée avancée par CRDT n’est pas nécessaire au premier pilote.
+
+## Constitution check
+
+C-01 à C-09 : couverts dans le plan proposé. Ratification et vérification sur implémentation restent ouvertes. Complexité retenue : un service applicatif, traitements asynchrones bornés ; aucune infrastructure agentique supplémentaire pour le diagnostic.
+
+
+## Mise en œuvre locale T001, 9 septembre 2026
+
+La demande de lancement autorise une première tranche synthétique. Voir `docs/adr/0001-tranche-locale-modele.md` pour le choix local réversible. Versions réellement installées : React 19.3.0, React Flow 12.11.6, Vite 8.2.2, TypeScript 7.0.2, Zod 4.5.4, Playwright 1.63.0, tsx 4.23.13 ; Node testé : 22.14.0, SQLite embarqué : 3.47.2. Le fichier de verrouillage npm fait autorité pour les dépendances transitives.
+
+SQLite stocke le modèle courant, les commandes idempotentes et les révisions immuables. Une transaction `BEGIN IMMEDIATE` englobe la lecture de révision, la validation et toutes les écritures. Un serveur HTTP commun sert l'API et le studio. Les schémas sont exécutables dans `src/contracts/model.ts`.
+
+Le mode synthétique ouvre uniquement la préparation locale. Les accès de session sont contrôlés avant lecture, génération et mutation ; l'interface ne choisit aucune identité. T002 vérifie localement les dossiers, les espaces, l'isolation et la révocation avec des identités injectées. DEC-03 et les règles de partage T005 restent ouverts. La carte React Flow ne fixe pas le profil BPMN T008. Le CLI Spec Kit n'a pas été installé ni exécuté : les artefacts Spec Kit existants sont maintenus directement.

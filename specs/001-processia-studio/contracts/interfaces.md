@@ -1,0 +1,101 @@
+# Contrats ProcessIA proposés v1
+
+## 15 · Contrats de modification et de connexion MCP
+
+### Enveloppe de commande du modèle, proposition v1
+
+Chaque commande contient `schema_version`, `command_id`, `dossier_id`, `model_id`, `base_revision`, `origin`, `operations` et, si nécessaire, `turn_id` et `selection_snapshot`. L’identité et les droits viennent de la session authentifiée, jamais d’un champ déclaré par l’IA. Les références de preuve sont facultatives pour une hypothèse et obligatoires pour une affirmation issue d’une source.
+
+```json
+{
+  "schema_version": "1",
+  "command_id": "cmd-example-001",
+  "dossier_id": "demo-kosmio",
+  "model_id": "process-diagnostic",
+  "base_revision": 12,
+  "origin": "conversation",
+  "turn_id": "turn-example-07",
+  "selection_snapshot": {"element_id": "task-restitution", "revision": 12},
+  "operations": [
+    {"type": "SET_TASK_TOOL", "task_id": "task-restitution", "tool_id": "tool-documents"}
+  ]
+}
+```
+
+La réponse contient `status`, `revision`, `applied_command_id`, `changes`, `warnings` et `correlation_id`. Les statuts sont `applied`, `duplicate`, `needs_clarification`, `rejected` ou `conflict`. Aucune opération d’un lot ne s’applique si une autre est invalide. Deux commandes concurrentes fondées sur la même révision produisent une application et un conflit explicite, sauf rebase sûr documenté ultérieurement.
+
+L’annulation est une nouvelle commande liée à la précédente. Elle conserve l’historique et vérifie qu’elle n’écrase pas un changement plus récent. Une confirmation d’action porte sur une proposition et une révision précises. Une réponse IA reçue après annulation ou changement de cible est invalidée.
+
+### Familles de commandes
+
+| Commandes | Sens |
+|---|---|
+| `ADD_PROCESS`, `ADD_TASK`, `UPDATE_LABEL` | Créer ou décrire un élément avec identifiant stable |
+| `CONNECT_ELEMENTS`, `REMOVE_CONNECTION` | Ajouter ou retirer un lien typé valide |
+| `SET_TASK_ROLE`, `SET_TASK_TOOL`, `LINK_INFORMATION` | Affecter rôles, outils, données ou documents |
+| `MOVE_ELEMENT`, `EXPAND_SUBPROCESS` | Modifier une disposition ou ouvrir un niveau |
+| `PROPOSE_ASSERTION`, `CONFIRM_ASSERTION`, `DISPUTE_ASSERTION` | Gérer la connaissance sans mélanger structure et vérité métier |
+| `SHARE_PROJECTION`, `CREATE_SNAPSHOT` | Publier une projection autorisée ou figer une version |
+
+### Surface MCP proposée
+
+Les noms ci-dessous sont des contrats ProcessIA proposés, pas des outils déjà installés. Le serveur devra respecter la [spécification MCP des outils](https://modelcontextprotocol.io/specification/2025-11-25/server/tools). Pour une connexion distante HTTP, le mécanisme d’autorisation sera défini selon la [spécification MCP d’autorisation](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization), avec vérification de l’audience et du périmètre. La révision de protocole retenue devra être confirmée avec le client cible.
+
+| Outil | Entrée principale | Sortie | Droit requis |
+|---|---|---|---|
+| `processia_identity` | Aucune cible implicite | Identité, droits et dossiers accessibles paginés | Session authentifiée |
+| `processia_get_dossier` | `dossier_id` | Contexte et résumé autorisés | Lecture dossier |
+| `processia_add_source` | `dossier_id`, clé d’idempotence, titre, type, contenu texte ou référence d’upload interne | `source_id`, version, état de traitement, `job_id` | Écriture sources privées |
+| `processia_update_source` | `dossier_id`, `source_id`, version de base, contenu, clé d’idempotence | Nouvelle version, état, `job_id` | Écriture de la source |
+| `processia_retry_source` | `dossier_id`, `source_id`, clé d’idempotence | Identifiant du traitement repris | Écriture de la source |
+| `processia_get_source_status` | `dossier_id`, `source_id` | État, limites et erreurs accessibles | Lecture source |
+| `processia_list_sources` | `dossier_id`, curseur, limite | Sources autorisées, prochain curseur | Lecture sources |
+| `processia_get_model` | `dossier_id`, modèle, révision optionnelle | Projection du modèle autorisée | Lecture modèle |
+| `processia_list_questions` | `dossier_id`, processus optionnel, curseur | Questions et rôles à interroger | Lecture dossier |
+| `processia_propose_changes` | Enveloppe, `dry_run` | Validation, diff et identifiant de proposition | Proposition de modification |
+
+`dry_run=true` ne modifie aucun objet métier. `dry_run=false` enregistre une proposition privée ; il ne publie pas le dossier. Le premier MVP ne comporte pas d’outil MCP permettant de publier silencieusement une synthèse vers le client. Une source identique est reconnue dans le même dossier et le même périmètre de visibilité ; la déduplication ne révèle pas l’existence de documents d’un autre client.
+
+Les listes sont paginées, avec limite proposée de 50 et maximum de 100. Les appels d’écriture utilisent une clé d’idempotence. La réutilisation de la clé avec un autre contenu échoue. Le statut asynchrone est consultable après reconnexion. Aucun outil n’accepte un chemin serveur arbitraire ni un téléchargement depuis une URL arbitraire dans le premier profil.
+
+### Erreurs normalisées et comportement utilisateur
+
+| Code | Conséquence |
+|---|---|
+| `ACCESS_DENIED` / `NOT_FOUND` | Message neutre ; aucune donnée privée ni existence d’un autre dossier révélée |
+| `REVISION_CONFLICT` | Afficher la version actuelle et proposer de reformuler ou réappliquer après revue |
+| `INVALID_OPERATION` | Aucun effet ; indiquer le lien ou champ à corriger |
+| `IDEMPOTENCY_CONFLICT` | Aucun doublon ; demander une nouvelle commande si le contenu a changé |
+| `SOURCE_UNSUPPORTED` / `SOURCE_PARTIAL` | Donner le format attendu ou les pages non traitées |
+| `PROVIDER_UNAVAILABLE` | Garder le canevas utilisable, conserver le brouillon et proposer une reprise |
+| `BUDGET_LIMIT` | Suspendre les nouveaux appels IA ; préserver lecture, édition et export autorisés |
+
+Les erreurs MCP de transport suivent le protocole ; les erreurs métier sont des résultats structurés sans détail interne ni secret. Les contrats complets et leur version devront être convertis en schémas exécutables pendant la première tranche technique.
+
+## Sous-ensemble local exécuté par T001
+
+Le contrat proposé ci-dessus demeure la cible MVP. L'enveloppe et les opérations effectivement acceptées sont validées par Zod dans `src/contracts/model.ts`.
+
+| Opération | Champs spécifiques | Effet local |
+| --- | --- | --- |
+| `ADD_TASK` | `task_id`, `label`, `before_id` facultatif | Ajoute une tâche proposée. Avec une cible, redirige ses liens entrants vers la nouvelle tâche puis crée le lien vers la cible, dans la même transaction. |
+| `UPDATE_LABEL` | `element_id`, `label` | Conserve identité, liens, rôle et position. |
+| `MOVE_ELEMENT` | `element_id`, `position: {x,y}` | Modifie uniquement la disposition. |
+| `UNDO` | `target_command_id` | Annule uniquement la dernière commande, sur la révision courante, dans une nouvelle révision. |
+
+`statement` conserve la demande synthétique et `turn_id` son identifiant. Ces champs ne constituent pas un entretien complet. Identifiants bornés à 120 caractères alphanumériques, tirets et underscores ; libellés de 1 à 160 caractères, lots de 1 à 50 opérations, corps HTTP de 32 Kio maximum. Ce sont des limites de mise en œuvre locale, pas des quotas validés pour le pilote.
+
+Routes locales :
+
+- `GET /api/health` : mode de démonstration et état du service.
+- `GET /api/dossiers` : dossiers accessibles à l'identité résolue par le serveur.
+- `POST /api/dossiers` : création d'un dossier privé par le consultant local.
+- `GET /api/dossiers/:dossier` : dossier et liste de ses espaces autorisés.
+- `GET /api/dossiers/:dossier/models/:model` : modèle courant autorisé.
+- `GET /api/dossiers/:dossier/models/:model/history` : journal des révisions du dossier local.
+- `POST /api/proposals` : demande écrite via l'adaptateur simulé ; aucun changement persistant.
+- `POST /api/commands` : application atomique, contrôle de révision et idempotence.
+
+L'historique et la liste des dossiers ne sont pas encore paginés. HTTP local exige un Host `127.0.0.1:port` et une origine identique pour les POST. Codes HTTP : 403 accès, 409 concurrence, 422 commande invalide, 400 JSON invalide, 413 corps trop grand, 415 contenu autre que JSON. Les réponses de proposition utilisent leur statut métier. Aucun serveur MCP n'est exposé dans cette tranche.
+
+T002 ajoute `dossiers` et `dossier_access` dans SQLite. Un accès associe l'utilisateur résolu côté serveur, le dossier, le rôle applicatif, l'espace `private` ou `shared`, le droit d'écriture et l'état actif ou révoqué. Le contrôle du modèle croise toujours cet accès persistant avec sa visibilité ; une capacité de session ne réactive donc pas un accès révoqué. La méthode d'identité et les invitations externes restent DEC-03.

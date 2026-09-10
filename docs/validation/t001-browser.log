@@ -1,0 +1,37 @@
+
+> processia@0.1.0 test:e2e
+> npm run build && playwright test
+
+
+> processia@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 174 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.47 kB │ gzip:   0.31 kB
+dist/assets/index-h01vhHxY.css   28.45 kB │ gzip:   6.08 kB
+dist/assets/index-DldMS_Ue.js   414.97 kB │ gzip: 130.69 kB
+
+✓ built in 114ms
+[WebServer] (node:96112) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:96112) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+
+Running 7 tests using 1 worker
+
+(node:96117) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:96117) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/e2e/studio.spec.ts:3:1 › T001 : demande écrite, validation et rechargement du canevas (560ms)
+  ✓  2 tests/e2e/studio.spec.ts:20:1 › T001 : annuler la dernière modification depuis le studio conserve une nouvelle révision (328ms)
+  ✓  3 tests/e2e/studio.spec.ts:50:1 › T001 : modifier un libellé depuis la fiche conserve la correction après rechargement (329ms)
+  ✓  4 tests/e2e/studio.spec.ts:65:1 › T001 : déplacer une tâche sur la carte conserve ses liens et persiste sa position (448ms)
+  ✓  5 tests/e2e/studio.spec.ts:91:1 › T001 : écarter une proposition conserve la révision de la carte (273ms)
+  ✓  6 tests/e2e/studio.spec.ts:106:1 › T001 : une édition concurrente est conservée et le conflit est visible dans le studio (357ms)
+  ✓  7 tests/e2e/studio.spec.ts:148:1 › T002 : créer deux dossiers homonymes puis les distinguer dans le studio (427ms)
+
+  7 passed (3.7s)
