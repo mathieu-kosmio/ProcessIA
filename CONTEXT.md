@@ -8,7 +8,7 @@ Mis à jour le 9 septembre 2026 à partir des échanges de conception avec Mathi
 - Dossier de travail : `/Users/mathieu/Dev/ProcessIA`.
 - Dépôt : `https://github.com/mathieu-kosmio/ProcessIA`.
 - Projet distinct de Bretelles. Aucune contrainte de fournisseur, de runtime ou de déploiement de Bretelles n'est automatiquement reconduite.
-- Stade : développement local démarré le 9 septembre 2026, première tranche T001.
+- Stade : développement local démarré le 9 septembre 2026, tranches T001 à T003 vérifiées.
 
 ## Décisions confirmées
 
@@ -55,6 +55,6 @@ Statut : spécifications rédigées pour revue. Constitution, règles détaillé
 
 ## Démarrage du développement le 9 septembre 2026
 
-Mathieu demande de lancer le développement avec le dépôt GitHub ProcessIA. Le démarrage porte sur T001 puis T002 avec des données synthétiques et un adaptateur de langage simulé. TypeScript, React, Vite, React Flow et SQLite constituent un choix local réversible décrit dans ADR-0001. Les deux tranches sont vérifiées localement au 10 septembre 2026 : canevas persisté, commandes versionnées, dossiers distincts et accès bornés. Cette demande ne vaut pas ratification globale des propositions ni choix des fournisseurs ou de l'identité du pilote externe.
+Mathieu demande de lancer puis de poursuivre le développement avec le dépôt GitHub ProcessIA. T001 à T003 utilisent des données synthétiques et un adaptateur de langage simulé. TypeScript, React, Vite, React Flow et SQLite constituent un choix local réversible décrit dans ADR-0001. Les trois tranches sont vérifiées localement au 10 septembre 2026 : canevas persisté, commandes versionnées, dossiers distincts, accès bornés et fiches de tâches reliant rôles, outils, entrées et sorties par identifiant stable. Cette demande ne vaut pas ratification globale des propositions ni choix des fournisseurs ou de l'identité du pilote externe.
 
-Le paragraphe de statut v0.2 ci-dessus décrit l'état au moment de la rédaction. L'état courant, les preuves et les limites sont désormais dans `IMPLEMENTATION_PLAN.md`, `docs/validation/T001.md` et `docs/validation/T002.md`.
+Le paragraphe de statut v0.2 ci-dessus décrit l'état au moment de la rédaction. L'état courant, les preuves et les limites sont désormais dans `IMPLEMENTATION_PLAN.md` et les fiches `docs/validation/T001.md` à `T003.md`.

@@ -17,7 +17,7 @@ Une extension vers un harnais déployable sur VPS avec Docker et éventuellement
 
 ## Statut
 
-Tranches T001 et T002 implémentées localement : dossiers isolés, carte synthétique persistée, commandes contrôlées, dialogue simulé, édition du libellé, déplacement et annulation de la dernière commande. Le MVP complet reste à développer.
+Tranches T001 à T003 implémentées localement : dossiers isolés, carte synthétique persistée, commandes contrôlées, dialogue simulé, édition, historique et fiches de tâches documentant rôle, outil, entrée et sortie. Le MVP complet reste à développer.
 
 Premier cas pilote : Kosmio. Second terrain prévu : SOCAMEX, dans le cadre de PerfIA.
 
@@ -68,8 +68,9 @@ Paramètres facultatifs : `PORT`, `PROCESSIA_DB_PATH` (chemin de base ou `:memor
 2. Créer un autre dossier dans la barre latérale ; l'activité peut rester à préciser.
 3. Écrire « Ajoute une validation avant la restitution » et demander une proposition.
 4. Relire la cible et appliquer la proposition ; recharger la page pour retrouver la tâche.
-5. Sélectionner une tâche, corriger son libellé ou déplacer le bloc. La vue Liste permet aussi d'ouvrir les fiches au clavier.
-6. Annuler la dernière modification avec le bouton fléché ; ouvrir le journal pour retrouver les révisions.
+5. Sélectionner une tâche, corriger son libellé et renseigner son rôle, son outil, son entrée et sa sortie.
+6. Recharger la page pour vérifier la persistance de la fiche, ou déplacer le bloc sur la carte.
+7. Annuler la dernière modification avec le bouton fléché ; ouvrir le journal pour retrouver les révisions.
 
 Le dialogue est un adaptateur déterministe : seules la phrase ci-dessus et « Ajoute une validation avant cette tâche » avec une sélection sont reconnues. Toute autre demande reçoit une clarification. Aucun appel LLM ni traitement vocal n'est activé.
 
@@ -91,3 +92,4 @@ Le mode local fournit une identité de consultant synthétique côté serveur. I
 - [Décision d'architecture locale](docs/adr/0001-tranche-locale-modele.md)
 - [Preuves et limites T001](docs/validation/T001.md)
 - [Preuves et limites T002](docs/validation/T002.md)
+- [Preuves et limites T003](docs/validation/T003.md)

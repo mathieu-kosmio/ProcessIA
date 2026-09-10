@@ -1,5 +1,13 @@
 import type { Model } from '../../contracts/model.ts';
 
+const emptyReference = () => ({ ids: [], knowledge: 'unset' as const });
+const taskDetails = (roleId?: string) => ({
+  role: roleId ? { ids: [roleId], knowledge: 'proposed' as const } : emptyReference(),
+  tools: emptyReference(),
+  inputs: emptyReference(),
+  outputs: emptyReference(),
+});
+
 // Données synthétiques : aucune description confirmée des pratiques de Kosmio.
 export const initialModel: Model = {
   id: 'process-diagnostic',
@@ -7,6 +15,9 @@ export const initialModel: Model = {
   name: 'Réaliser un diagnostic IA',
   revision: 0,
   visibility: 'private',
+  roles: [{ id: 'role-consultant', label: 'Consultant' }],
+  tools: [],
+  information: [],
   tasks: [
     {
       id: 'task-preparation',
@@ -14,6 +25,7 @@ export const initialModel: Model = {
       position: { x: 70, y: 80 },
       knowledge: 'proposed',
       role: 'Consultant',
+      details: taskDetails('role-consultant'),
     },
     {
       id: 'task-entretien',
@@ -21,6 +33,7 @@ export const initialModel: Model = {
       position: { x: 400, y: 80 },
       knowledge: 'proposed',
       role: 'Consultant',
+      details: taskDetails('role-consultant'),
     },
     {
       id: 'task-modelisation',
@@ -28,6 +41,7 @@ export const initialModel: Model = {
       position: { x: 730, y: 80 },
       knowledge: 'proposed',
       role: 'Consultant',
+      details: taskDetails('role-consultant'),
     },
     {
       id: 'task-opportunites',
@@ -35,6 +49,7 @@ export const initialModel: Model = {
       position: { x: 730, y: 400 },
       knowledge: 'proposed',
       role: 'Consultant',
+      details: taskDetails('role-consultant'),
     },
     {
       id: 'task-priorisation',
@@ -42,6 +57,7 @@ export const initialModel: Model = {
       position: { x: 400, y: 400 },
       knowledge: 'proposed',
       role: null,
+      details: taskDetails(),
     },
     {
       id: 'task-restitution',
@@ -49,6 +65,7 @@ export const initialModel: Model = {
       position: { x: 70, y: 400 },
       knowledge: 'proposed',
       role: 'Consultant',
+      details: taskDetails('role-consultant'),
     },
   ],
   links: [

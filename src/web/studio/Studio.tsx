@@ -5,10 +5,11 @@ import type {
   CommandResult,
   HistoryEntry,
   Dossier,
+  Task,
 } from '../../contracts/model.ts';
 import type { Proposal } from '../../application/interviews/propose.ts';
 import { Canvas } from './Canvas.tsx';
-import { TaskInspector } from './TaskInspector.tsx';
+import { TaskInspector, type TaskDetailValues } from './TaskInspector.tsx';
 import { CreateDossierDialog } from './CreateDossierDialog.tsx';
 
 const modelPath = (dossierId: string) => `/api/dossiers/${dossierId}/models/process-diagnostic`;
@@ -26,6 +27,99 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   const data = await response.json();
   if (!response.ok && !data.status) throw new Error(data.message ?? 'La demande a échoué.');
   return data;
+}
+
+function taskDetailValues(model: Model, task: Task): TaskDetailValues {
+  const labels = <T extends { id: string; label: string }>(ids: string[], items: T[]) =>
+    ids
+      .map((id) => items.find((item) => item.id === id)?.label)
+      .filter(Boolean)
+      .join(', ');
+  return {
+    role: labels(task.details.role.ids, model.roles),
+    tool: labels(task.details.tools.ids, model.tools),
+    input: labels(task.details.inputs.ids, model.information),
+    output: labels(task.details.outputs.ids, model.information),
+  };
+}
+
+function taskDetailOperations(
+  model: Model,
+  task: Task,
+  values: TaskDetailValues,
+): Command['operations'] {
+  const operations: Command['operations'] = [];
+  const [roleLabel, toolLabel, inputLabel, outputLabel] = [
+    values.role,
+    values.tool,
+    values.input,
+    values.output,
+  ].map((value) => value.trim());
+  const sameLabel = (left: string, right: string) =>
+    left.toLocaleLowerCase('fr') === right.toLocaleLowerCase('fr');
+  const role = roleLabel ? model.roles.find((item) => sameLabel(item.label, roleLabel)) : undefined;
+  const tool = toolLabel ? model.tools.find((item) => sameLabel(item.label, toolLabel)) : undefined;
+  const input = inputLabel
+    ? model.information.find(
+        (item) => item.category === 'data' && sameLabel(item.label, inputLabel),
+      )
+    : undefined;
+  const output = outputLabel
+    ? model.information.find(
+        (item) => item.category === 'deliverable' && sameLabel(item.label, outputLabel),
+      )
+    : undefined;
+  const roleId = roleLabel ? (role?.id ?? `role-${crypto.randomUUID()}`) : null;
+  const toolId = toolLabel ? (tool?.id ?? `tool-${crypto.randomUUID()}`) : null;
+  const inputId = inputLabel ? (input?.id ?? `information-${crypto.randomUUID()}`) : null;
+  const outputId = outputLabel ? (output?.id ?? `information-${crypto.randomUUID()}`) : null;
+  if (roleLabel && !role)
+    operations.push({ type: 'UPSERT_ROLE', role_id: roleId!, label: roleLabel });
+  if (toolLabel && !tool)
+    operations.push({ type: 'UPSERT_TOOL', tool_id: toolId!, label: toolLabel });
+  if (inputLabel && !input)
+    operations.push({
+      type: 'UPSERT_INFORMATION',
+      information_id: inputId!,
+      label: inputLabel,
+      category: 'data',
+    });
+  if (outputLabel && !output)
+    operations.push({
+      type: 'UPSERT_INFORMATION',
+      information_id: outputId!,
+      label: outputLabel,
+      category: 'deliverable',
+    });
+  operations.push(
+    {
+      type: 'SET_TASK_ROLE',
+      task_id: task.id,
+      role_id: roleId,
+      knowledge: roleId ? 'to_confirm' : 'unset',
+    },
+    {
+      type: 'SET_TASK_TOOL',
+      task_id: task.id,
+      tool_ids: toolId ? [toolId] : [],
+      knowledge: toolId ? 'to_confirm' : 'unset',
+    },
+    {
+      type: 'LINK_INFORMATION',
+      task_id: task.id,
+      direction: 'input',
+      information_ids: inputId ? [inputId] : [],
+      knowledge: inputId ? 'to_confirm' : 'unset',
+    },
+    {
+      type: 'LINK_INFORMATION',
+      task_id: task.id,
+      direction: 'output',
+      information_ids: outputId ? [outputId] : [],
+      knowledge: outputId ? 'to_confirm' : 'unset',
+    },
+  );
+  return operations;
 }
 
 export function Studio() {
@@ -351,11 +445,15 @@ export function Studio() {
                 <TaskInspector
                   key={task.id}
                   task={task}
+                  values={taskDetailValues(model, task)}
                   revision={model.revision}
                   busy={busy}
                   onClose={() => setSelected(undefined)}
                   onRename={(label, base) =>
                     apply(manual([{ type: 'UPDATE_LABEL', element_id: task.id, label }], base))
+                  }
+                  onSaveDetails={(values, base) =>
+                    apply(manual(taskDetailOperations(model, task, values), base))
                   }
                 />
               )}

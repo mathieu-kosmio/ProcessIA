@@ -11,6 +11,44 @@ import type {
 import { initialModel } from '../../adapters/persistence/seed.ts';
 import { commandSchema } from '../../contracts/model.ts';
 
+const emptyReference = () => ({ ids: [], knowledge: 'unset' as const });
+function legacyRoleId(label: string) {
+  const slug = label
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+  return `role-${slug || 'metier'}`;
+}
+function normalizeModel(raw: Model): Model {
+  const roles = [...(raw.roles ?? [])];
+  const tasks = raw.tasks.map((task) => {
+    let role = task.details?.role;
+    if (!role && task.role) {
+      const roleId = legacyRoleId(task.role);
+      if (!roles.some((item) => item.id === roleId)) roles.push({ id: roleId, label: task.role });
+      role = { ids: [roleId], knowledge: 'proposed' };
+    }
+    return {
+      ...task,
+      details: task.details ?? {
+        role: role ?? emptyReference(),
+        tools: emptyReference(),
+        inputs: emptyReference(),
+        outputs: emptyReference(),
+      },
+    };
+  });
+  return {
+    ...raw,
+    tasks,
+    roles,
+    tools: raw.tools ?? [],
+    information: raw.information ?? [],
+  };
+}
+
 export const demoSession: Session = {
   user_id: 'local-consultant',
   application_role: 'consultant',
@@ -124,14 +162,114 @@ export class ModelService {
         const row = this.db
           .prepare('SELECT data FROM revisions WHERE dossier_id=? AND model_id=? AND revision=?')
           .get(model.dossier_id, model.id, model.revision - 1) as { data: string };
-        model = { ...JSON.parse(row.data), revision: model.revision };
+        model = normalizeModel({ ...JSON.parse(row.data), revision: model.revision });
         continue;
       }
       if (operation.type === 'MOVE_ELEMENT' || operation.type === 'UPDATE_LABEL') {
         const task = model.tasks.find((task) => task.id === operation.element_id);
+        if (operation.type === 'MOVE_ELEMENT') {
+          if (!task) return rejected();
+          task.position = operation.position;
+          continue;
+        }
+        if (task) {
+          task.label = operation.label;
+          continue;
+        }
+        const role = model.roles.find((item) => item.id === operation.element_id);
+        const tool = model.tools.find((item) => item.id === operation.element_id);
+        const information = model.information.find((item) => item.id === operation.element_id);
+        const entity = role ?? tool ?? information;
+        if (!entity) return rejected();
+        entity.label = operation.label;
+        if (role)
+          model.tasks.forEach((item) => {
+            if (item.details.role.ids.includes(role.id)) item.role = role.label;
+          });
+        continue;
+      }
+      if (
+        operation.type === 'UPSERT_ROLE' ||
+        operation.type === 'UPSERT_TOOL' ||
+        operation.type === 'UPSERT_INFORMATION'
+      ) {
+        const entityId =
+          operation.type === 'UPSERT_ROLE'
+            ? operation.role_id
+            : operation.type === 'UPSERT_TOOL'
+              ? operation.tool_id
+              : operation.information_id;
+        const usedByAnotherKind =
+          model.tasks.some((item) => item.id === entityId) ||
+          (operation.type !== 'UPSERT_ROLE' && model.roles.some((item) => item.id === entityId)) ||
+          (operation.type !== 'UPSERT_TOOL' && model.tools.some((item) => item.id === entityId)) ||
+          (operation.type !== 'UPSERT_INFORMATION' &&
+            model.information.some((item) => item.id === entityId));
+        if (usedByAnotherKind) return rejected();
+        if (operation.type === 'UPSERT_ROLE') {
+          const existing = model.roles.find((item) => item.id === operation.role_id);
+          if (existing) {
+            existing.label = operation.label;
+            model.tasks.forEach((item) => {
+              if (item.details.role.ids.includes(existing.id)) item.role = existing.label;
+            });
+          } else model.roles.push({ id: operation.role_id, label: operation.label });
+        } else if (operation.type === 'UPSERT_TOOL') {
+          const existing = model.tools.find((item) => item.id === operation.tool_id);
+          if (existing) existing.label = operation.label;
+          else model.tools.push({ id: operation.tool_id, label: operation.label });
+        } else {
+          const existing = model.information.find((item) => item.id === operation.information_id);
+          if (existing && existing.category !== operation.category) return rejected();
+          if (existing) existing.label = operation.label;
+          else
+            model.information.push({
+              id: operation.information_id,
+              label: operation.label,
+              category: operation.category,
+            });
+        }
+        continue;
+      }
+      if (
+        operation.type === 'SET_TASK_ROLE' ||
+        operation.type === 'SET_TASK_TOOL' ||
+        operation.type === 'LINK_INFORMATION'
+      ) {
+        const task = model.tasks.find((item) => item.id === operation.task_id);
         if (!task) return rejected();
-        if (operation.type === 'MOVE_ELEMENT') task.position = operation.position;
-        else task.label = operation.label;
+        if (operation.type === 'SET_TASK_ROLE') {
+          const ids = operation.role_id ? [operation.role_id] : [];
+          const role = operation.role_id
+            ? model.roles.find((item) => item.id === operation.role_id)
+            : undefined;
+          if (!role && operation.role_id) return rejected();
+          if ((ids.length === 0) !== (operation.knowledge === 'unset')) return rejected();
+          task.details.role = { ids, knowledge: operation.knowledge };
+          task.role = role?.label ?? null;
+        } else if (operation.type === 'SET_TASK_TOOL') {
+          if (new Set(operation.tool_ids).size !== operation.tool_ids.length) return rejected();
+          if (operation.tool_ids.some((id) => !model.tools.some((item) => item.id === id)))
+            return rejected();
+          if ((operation.tool_ids.length === 0) !== (operation.knowledge === 'unset'))
+            return rejected();
+          task.details.tools = { ids: operation.tool_ids, knowledge: operation.knowledge };
+        } else {
+          if (new Set(operation.information_ids).size !== operation.information_ids.length)
+            return rejected();
+          if (
+            operation.information_ids.some(
+              (id) => !model.information.some((item) => item.id === id),
+            )
+          )
+            return rejected();
+          if ((operation.information_ids.length === 0) !== (operation.knowledge === 'unset'))
+            return rejected();
+          task.details[operation.direction === 'input' ? 'inputs' : 'outputs'] = {
+            ids: operation.information_ids,
+            knowledge: operation.knowledge,
+          };
+        }
         continue;
       }
       const target = model.tasks.find((task) => task.id === operation.before_id);
@@ -155,6 +293,12 @@ export class ModelService {
         position,
         knowledge: 'proposed',
         role: null,
+        details: {
+          role: emptyReference(),
+          tools: emptyReference(),
+          inputs: emptyReference(),
+          outputs: emptyReference(),
+        },
       });
       if (target) {
         model.links = model.links.map((link) =>
@@ -176,13 +320,16 @@ export class ModelService {
       status: 'applied',
       revision: model.revision,
       applied_command_id: command.command_id,
-      changes: command.operations.flatMap((operation) =>
-        operation.type === 'UNDO'
-          ? model.tasks.map((task) => task.id)
-          : operation.type === 'ADD_TASK'
-            ? [operation.task_id]
-            : [operation.element_id],
-      ),
+      changes: command.operations.flatMap((operation) => {
+        if (operation.type === 'UNDO') return model.tasks.map((task) => task.id);
+        if (operation.type === 'ADD_TASK') return [operation.task_id];
+        if (operation.type === 'UPDATE_LABEL' || operation.type === 'MOVE_ELEMENT')
+          return [operation.element_id];
+        if (operation.type === 'UPSERT_ROLE') return [operation.role_id];
+        if (operation.type === 'UPSERT_TOOL') return [operation.tool_id];
+        if (operation.type === 'UPSERT_INFORMATION') return [operation.information_id];
+        return [operation.task_id];
+      }),
       warnings: [],
       correlation_id: randomUUID(),
     };
@@ -222,7 +369,7 @@ export class ModelService {
       .prepare('SELECT data FROM models WHERE dossier_id=? AND id=?')
       .get(dossier, model) as { data: string } | undefined;
     if (!row) throw new AccessDenied();
-    return JSON.parse(row.data);
+    return normalizeModel(JSON.parse(row.data));
   }
 
   private modelAllowed(session: Session, dossierId: string, modelId: string, write: boolean) {
@@ -272,6 +419,9 @@ export class ModelService {
         visibility: 'private',
         tasks: [],
         links: [],
+        roles: [],
+        tools: [],
+        information: [],
       };
       this.db
         .prepare('INSERT INTO models VALUES (?, ?, ?)')

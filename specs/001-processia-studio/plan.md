@@ -59,10 +59,12 @@ Cette structure est une cible de plan, pas une arborescence applicative déjà c
 C-01 à C-09 : couverts dans le plan proposé. Ratification et vérification sur implémentation restent ouvertes. Complexité retenue : un service applicatif, traitements asynchrones bornés ; aucune infrastructure agentique supplémentaire pour le diagnostic.
 
 
-## Mise en œuvre locale T001, 9 septembre 2026
+## Mise en œuvre locale T001 à T003, 9 et 10 septembre 2026
 
 La demande de lancement autorise une première tranche synthétique. Voir `docs/adr/0001-tranche-locale-modele.md` pour le choix local réversible. Versions réellement installées : React 19.3.0, React Flow 12.11.6, Vite 8.2.2, TypeScript 7.0.2, Zod 4.5.4, Playwright 1.63.0, tsx 4.23.13 ; Node testé : 22.14.0, SQLite embarqué : 3.47.2. Le fichier de verrouillage npm fait autorité pour les dépendances transitives.
 
 SQLite stocke le modèle courant, les commandes idempotentes et les révisions immuables. Une transaction `BEGIN IMMEDIATE` englobe la lecture de révision, la validation et toutes les écritures. Un serveur HTTP commun sert l'API et le studio. Les schémas sont exécutables dans `src/contracts/model.ts`.
 
 Le mode synthétique ouvre uniquement la préparation locale. Les accès de session sont contrôlés avant lecture, génération et mutation ; l'interface ne choisit aucune identité. T002 vérifie localement les dossiers, les espaces, l'isolation et la révocation avec des identités injectées. DEC-03 et les règles de partage T005 restent ouverts. La carte React Flow ne fixe pas le profil BPMN T008. Le CLI Spec Kit n'a pas été installé ni exécuté : les artefacts Spec Kit existants sont maintenus directement.
+
+T003 conserve rôles, outils et informations dans des registres du modèle de dossier. Les tâches les référencent par identifiant stable et qualifient séparément l'état de connaissance de chaque rattachement. Le studio enregistre rôle, outil, entrée et sortie dans une seule commande atomique. La gouvernance de confirmation et les catégories détaillées de documents restent ouvertes.

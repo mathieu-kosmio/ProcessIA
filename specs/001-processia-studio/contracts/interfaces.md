@@ -83,6 +83,17 @@ Le contrat proposé ci-dessus demeure la cible MVP. L'enveloppe et les opératio
 | `MOVE_ELEMENT` | `element_id`, `position: {x,y}` | Modifie uniquement la disposition. |
 | `UNDO` | `target_command_id` | Annule uniquement la dernière commande, sur la révision courante, dans une nouvelle révision. |
 
+T003 ajoute les opérations locales suivantes au même contrat versionné :
+
+| Opération | Champs spécifiques | Effet local |
+| --- | --- | --- |
+| UPSERT_ROLE, UPSERT_TOOL | Identifiant stable et libellé | Crée ou renomme une référence métier du dossier. |
+| UPSERT_INFORMATION | Identifiant stable, libellé et catégorie | Crée une donnée, un document, un modèle ou un livrable réutilisable. La catégorie d'un identifiant existant ne change pas silencieusement. |
+| SET_TASK_ROLE, SET_TASK_TOOL | Tâche, identifiants et état de connaissance | Remplace les rattachements concernés dans la même révision. |
+| LINK_INFORMATION | Tâche, sens input ou output, identifiants et état | Relie une ou plusieurs informations existantes à la tâche. |
+
+Un rattachement vide porte l'état unset. Une valeur saisie dans le studio porte l'état to_confirm. Les états confirmés existent dans le modèle cible mais aucune opération locale ne les attribue dans T003, car l'habilitation de confirmation reste à décider.
+
 `statement` conserve la demande synthétique et `turn_id` son identifiant. Ces champs ne constituent pas un entretien complet. Identifiants bornés à 120 caractères alphanumériques, tirets et underscores ; libellés de 1 à 160 caractères, lots de 1 à 50 opérations, corps HTTP de 32 Kio maximum. Ce sont des limites de mise en œuvre locale, pas des quotas validés pour le pilote.
 
 Routes locales :
@@ -99,3 +110,5 @@ Routes locales :
 L'historique et la liste des dossiers ne sont pas encore paginés. HTTP local exige un Host `127.0.0.1:port` et une origine identique pour les POST. Codes HTTP : 403 accès, 409 concurrence, 422 commande invalide, 400 JSON invalide, 413 corps trop grand, 415 contenu autre que JSON. Les réponses de proposition utilisent leur statut métier. Aucun serveur MCP n'est exposé dans cette tranche.
 
 T002 ajoute `dossiers` et `dossier_access` dans SQLite. Un accès associe l'utilisateur résolu côté serveur, le dossier, le rôle applicatif, l'espace `private` ou `shared`, le droit d'écriture et l'état actif ou révoqué. Le contrôle du modèle croise toujours cet accès persistant avec sa visibilité ; une capacité de session ne réactive donc pas un accès révoqué. La méthode d'identité et les invitations externes restent DEC-03.
+
+T003 ajoute au modèle JSON versionné les registres roles, tools et information, ainsi que les références role, tools, inputs et outputs de chaque tâche. Les commandes valident l'existence et le type des références avant toute écriture ; un lot invalide reste sans effet.

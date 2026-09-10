@@ -11,12 +11,33 @@ export type Dossier = {
   state: 'active';
   available_spaces: DossierSpace[];
 };
+export type KnowledgeState =
+  'unset' | 'proposed' | 'to_confirm' | 'confirmed' | 'contested' | 'confirmed_absent';
+export type ReferenceState = {
+  ids: string[];
+  knowledge: KnowledgeState;
+  confirmed_by?: string;
+  confirmed_at?: string;
+};
+export type BusinessRole = { id: string; label: string };
+export type BusinessTool = { id: string; label: string };
+export type BusinessInformation = {
+  id: string;
+  label: string;
+  category: 'data' | 'document' | 'template' | 'deliverable';
+};
 export type Task = {
   id: string;
   label: string;
   position: { x: number; y: number };
   knowledge: 'proposed';
   role: string | null;
+  details: {
+    role: ReferenceState;
+    tools: ReferenceState;
+    inputs: ReferenceState;
+    outputs: ReferenceState;
+  };
 };
 export type Link = { id: string; source: string; target: string; type: 'sequence' };
 export type Model = {
@@ -27,6 +48,9 @@ export type Model = {
   visibility: 'private';
   tasks: Task[];
   links: Link[];
+  roles: BusinessRole[];
+  tools: BusinessTool[];
+  information: BusinessInformation[];
 };
 export type CommandResult = {
   status: 'applied' | 'duplicate' | 'needs_clarification' | 'rejected' | 'conflict';
@@ -45,6 +69,7 @@ const id = z
   .min(1)
   .max(120)
   .regex(/^[a-zA-Z0-9_-]+$/);
+const editableKnowledge = z.enum(['unset', 'proposed', 'to_confirm']);
 export const operationSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('UNDO'), target_command_id: id }).strict(),
   z
@@ -52,6 +77,53 @@ export const operationSchema = z.discriminatedUnion('type', [
       type: z.literal('UPDATE_LABEL'),
       element_id: id,
       label: z.string().trim().min(1).max(160),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('UPSERT_ROLE'),
+      role_id: id,
+      label: z.string().trim().min(1).max(160),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('UPSERT_TOOL'),
+      tool_id: id,
+      label: z.string().trim().min(1).max(160),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('UPSERT_INFORMATION'),
+      information_id: id,
+      label: z.string().trim().min(1).max(160),
+      category: z.enum(['data', 'document', 'template', 'deliverable']),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('SET_TASK_ROLE'),
+      task_id: id,
+      role_id: id.nullable(),
+      knowledge: editableKnowledge,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('SET_TASK_TOOL'),
+      task_id: id,
+      tool_ids: z.array(id).max(20),
+      knowledge: editableKnowledge,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('LINK_INFORMATION'),
+      task_id: id,
+      direction: z.enum(['input', 'output']),
+      information_ids: z.array(id).max(20),
+      knowledge: editableKnowledge,
     })
     .strict(),
   z

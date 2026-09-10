@@ -1,12 +1,12 @@
 # ProcessIA · Suivi de développement
 
-Version 0.3.0, 10 septembre 2026. Développement local en cours, par tranches verticales TDD.
+Version 0.4.0, 10 septembre 2026. Développement local en cours, par tranches verticales TDD.
 
 | Tranche | Parcours principal | Résultat | État |
 | --- | --- | --- | --- |
 | T001 | US04 | Créer la tranche modèle et canevas persisté | Vérifié localement |
 | T002 | US01 | Borner le dossier et les accès | Vérifié localement |
-| T003 | US04 | Documenter rôles, outils et informations | Non commencé |
+| T003 | US04 | Documenter rôles, outils et informations | Vérifié localement |
 | T004 | US02 | Apporter une source par MCP | Non commencé |
 | T005 | US01 | Partager une projection maîtrisée | Non commencé |
 | T006 | US03 | Relier dialogue écrit, sélection et commandes | Non commencé |
@@ -54,3 +54,20 @@ Premier comportement visé : créer deux dossiers portant le même nom via l'int
 Preuve : `docs/validation/T002.md`. Vérification consolidée : 18 tests d'intégration et 7 parcours navigateur réussis.
 
 Limites : les identités sont synthétiques et injectées côté serveur. Aucun mécanisme d'invitation, d'expiration, d'authentification externe ou d'administration des accès n'est exposé dans l'interface. La projection partagée reste T005. Ces limites maintiennent DEC-01 et DEC-03 ouverts pour le pilote réel.
+
+## T003 · Rôles, outils et informations
+
+Statut : vérifié localement le 10 septembre 2026. Révision Git : jalon T003 documenté dans l'historique du dépôt.
+
+Premier comportement visé : ouvrir une fiche de tâche, renseigner un rôle, un outil, une information d'entrée et un livrable de sortie, puis retrouver ces rattachements après rechargement sans changer leurs identifiants lors d'un renommage.
+
+| Cycle | Exigences | Rouge observé | Résultat vérifié |
+| --- | --- | --- | --- |
+| Références métier | FR-027, FR-029, TC-027, TC-029 | Les opérations de rattachement étaient rejetées par le contrat | Registres de rôles, outils et informations réutilisables ; rattachements atomiques par identifiant |
+| Identité stable | FR-027, TC-027 | Les entités n'existaient pas dans le modèle versionné | Une tâche et quatre références renommées conservent leurs identifiants après réouverture SQLite |
+| État de connaissance | FR-028, TC-028 | Le champ vide ne portait aucun statut explicite | Chaque rattachement distingue unset, proposed, to_confirm, confirmed, contested et confirmed_absent ; la saisie locale produit to_confirm |
+| Studio web | FR-027, FR-028, FR-029 | Les champs de fiche étaient absents du parcours navigateur | Rôle, outil, entrée et sortie enregistrés ensemble et retrouvés après rechargement |
+
+Preuve : docs/validation/T003.md. Vérification consolidée : 19 tests d'intégration, build TypeScript/Vite et 8 parcours Chromium réussis.
+
+Limites : l'interface actuelle saisit une référence par catégorie. Les catégories documentaires détaillées, les contributeurs, le validateur, les personnes, les services, les échanges et la provenance restent à enrichir. La confirmation et l'absence confirmée ne sont pas encore déclenchables dans le studio car le rôle habilité à les décider reste ouvert.
