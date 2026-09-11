@@ -1,6 +1,6 @@
 # ProcessIA · Suivi de développement
 
-Version 0.13.0, 11 septembre 2026. Développement local en cours, par tranches verticales TDD.
+Version 0.14.0, 11 septembre 2026. Développement local en cours, par tranches verticales TDD.
 
 | Tranche | Parcours principal | Résultat | État |
 | --- | --- | --- | --- |
@@ -13,7 +13,7 @@ Version 0.13.0, 11 septembre 2026. Développement local en cours, par tranches v
 | T007 | US03 | Ajouter la voix et les reprises | Socle local vérifié, intégration ouverte |
 | T008 | US04 | Compléter la navigation et le profil BPMN | Noyau local vérifié |
 | T009 | US05 | Assister et consolider les entretiens | Noyau obligatoire vérifié |
-| T010 | US06 | Produire un diagnostic et une feuille de route | Noyaux diagnostic et cible vérifiés |
+| T010 | US06 | Produire un diagnostic et une feuille de route | Diagnostic, cible et capacité mutualisable vérifiés |
 | T011 | US07 | Figer et exporter les résultats autorisés | Non commencé |
 | T012 | US03 | Éprouver qualité et pilote | Non commencé |
 
@@ -184,7 +184,7 @@ Limites : la détection locale compare des formulations normalisées sélectionn
 
 ## T010 · Diagnostic et feuille de route
 
-Statut : noyaux FR-033 à FR-037 vérifiés localement le 11 septembre 2026. La comparaison actuel/cible couvre le libellé d'une tâche et signale toute révision ultérieure comme devant être réconciliée. La priorité proposée peut être révisée manuellement avec auteur, justification et historique. Les capacités mutualisées et le suivi des résultats restent à développer. DEC-07 bloque toujours la méthode de score et le format métier définitifs.
+Statut : noyaux FR-033 à FR-037 vérifiés localement le 11 septembre 2026. La comparaison actuel/cible couvre le libellé d'une tâche et signale toute révision ultérieure comme devant être réconciliée. La priorité proposée peut être révisée manuellement avec auteur, justification et historique. Une capacité conceptuelle mutualisable relie deux usages tout en conservant leur contexte et leur périmètre d'accès. Le suivi des résultats reste à développer. DEC-07 bloque toujours la méthode de score et le format métier définitifs.
 
 Premier comportement visé : produire depuis une révision précise un diagnostic privé au périmètre limité, relier une opportunité à un constat et à une divergence, conserver une faisabilité inconnue, expliquer la priorité et ordonner le prérequis avant un essai à validation humaine.
 
@@ -197,9 +197,10 @@ Premier comportement visé : produire depuis une révision précise un diagnosti
 | Feuille de route | FR-037, TC-037 | Aucun ordre d'action ne précédait l'essai | Le critère de sortie du prérequis est explicite et l'essai dépend de cette action |
 | Scénario cible distinct | FR-033, TC-033 | Le service de scénario cible était absent | Une cible préparée par IA référence la révision et la valeur de départ, puis conserve une validation humaine sans modifier le modèle réel |
 | Réconciliation | FR-033, TC-033 | Une nouvelle révision du modèle n'était pas comparée à la cible | La lecture signale la référence antérieure et exige une réconciliation explicite tout en préservant la cible validée |
+| Capacité mutualisable | FR-036, TC-036 | Le service et la représentation de capacité étaient absents | Une capacité indépendante du fournisseur relie deux usages, leurs tâches, contextes et périmètres distincts sans ouvrir d'accès commun |
 | Contrat HTTP | FR-033 à FR-037 | Les routes retournaient 404 | Diagnostics et scénarios cibles privés sont créés, validés et relus avec schémas stricts, droits et idempotence |
-| Studio consultant | US06, FR-033 à FR-037 | Le bouton diagnostic était absent | Diagnostic, feuille de route et comparaison actuel/cible avec validation et état de référence sont visibles dans Chromium |
+| Studio consultant | US06, FR-033 à FR-037 | Le bouton diagnostic était absent | Diagnostic, feuille de route, capacité mutualisable et comparaison actuel/cible sont visibles dans Chromium |
 
-Preuve : `docs/validation/T010.md`. Vérification consolidée : 60 tests de domaine, d'intégration et de contrat ainsi que 15 parcours Chromium réussis.
+Preuve : `docs/validation/T010.md`. Vérification consolidée : 62 tests de domaine, d'intégration et de contrat ainsi que 15 parcours Chromium réussis.
 
-Limites : ce noyau traite une opportunité synthétique reliée à une divergence ouverte et une cible limitée au changement de libellé d'une tâche. Il ne génère pas encore plusieurs options organisationnelles, d'automatisation et d'IA. Toute nouvelle révision rend actuellement la cible obsolète, y compris si elle touche un autre élément. Aucun score pondéré n'est calculé tant que DEC-07 reste ouvert. Les actions d'autonomie, les capacités mutualisées, la distinction entre gain hypothétique et mesure observée, la publication et l'export restent ouverts.
+Limites : ce noyau traite une opportunité synthétique reliée à une divergence ouverte et une cible limitée au changement de libellé d'une tâche. Il ne génère pas encore plusieurs options organisationnelles, d'automatisation et d'IA. Toute nouvelle révision rend actuellement la cible obsolète, y compris si elle touche un autre élément. La capacité mutualisable est une architecture conceptuelle : elle ne choisit aucun fournisseur, ne lance aucune exécution et ne mutualise aucune donnée. Aucun score pondéré n'est calculé tant que DEC-07 reste ouvert. Les actions d'autonomie, la distinction entre gain hypothétique et mesure observée, la publication et l'export restent ouverts.

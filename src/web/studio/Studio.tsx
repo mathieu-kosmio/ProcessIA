@@ -22,7 +22,12 @@ import type {
 import { BpmnPanel } from '../bpmn/BpmnPanel.tsx';
 import type { InterviewInvestigation } from '../../contracts/interview-review.ts';
 import { InterviewReviewPanel } from '../consultant/InterviewReviewPanel.tsx';
-import type { Diagnostic, PriorityLevel, TargetComparison } from '../../contracts/diagnostic.ts';
+import type {
+  CapabilityMap,
+  Diagnostic,
+  PriorityLevel,
+  TargetComparison,
+} from '../../contracts/diagnostic.ts';
 import { DiagnosticPanel } from '../diagnostic/DiagnosticPanel.tsx';
 
 const modelPath = (dossierId: string) => `/api/dossiers/${dossierId}/models/process-diagnostic`;
@@ -154,6 +159,7 @@ export function Studio() {
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [targets, setTargets] = useState<TargetComparison[]>([]);
+  const [capabilities, setCapabilities] = useState<CapabilityMap[]>([]);
   const [text, setText] = useState('');
   const [proposal, setProposal] = useState<Proposal>();
   const [busy, setBusy] = useState(false);
@@ -203,6 +209,7 @@ export function Studio() {
     setShowDiagnostics(false);
     setDiagnostics([]);
     setTargets([]);
+    setCapabilities([]);
     setProposal(undefined);
     stopMicrophone();
     setInterview(undefined);
@@ -326,12 +333,14 @@ export function Studio() {
     setError('');
     try {
       const path = modelPath(activeDossier);
-      const [diagnosticResult, targetResult] = await Promise.all([
+      const [diagnosticResult, targetResult, capabilityResult] = await Promise.all([
         read<{ items: Diagnostic[] }>(`${path}/diagnostics`),
         read<{ items: TargetComparison[] }>(`${path}/targets`),
+        read<{ items: CapabilityMap[] }>(`${path}/capabilities`),
       ]);
       setDiagnostics(diagnosticResult.items);
       setTargets(targetResult.items);
+      setCapabilities(capabilityResult.items);
       setShowDiagnostics(true);
       setShowReviews(false);
       setShowBpmn(false);
@@ -670,6 +679,7 @@ export function Studio() {
           <DiagnosticPanel
             diagnostics={diagnostics}
             targets={targets}
+            capabilities={capabilities}
             onRevisePriority={revisePriority}
             onClose={() => setShowDiagnostics(false)}
           />

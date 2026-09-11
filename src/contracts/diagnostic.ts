@@ -186,3 +186,32 @@ export type TargetComparison = {
     }
   >;
 };
+
+export type CapabilityUsageBindingInput = {
+  usage_id: string;
+  label: string;
+  context: string;
+  task_ids: string[];
+  required_scope: 'private' | 'shared';
+};
+
+export type CreateCapabilityMapInput = {
+  idempotency_key: string;
+  model_id: string;
+  diagnostic_id: string;
+  capability_id: string;
+  label: string;
+  description: string;
+  provider: null;
+  execution: 'disabled';
+  usage_bindings: CapabilityUsageBindingInput[];
+};
+
+export type CapabilityMap = Omit<CreateCapabilityMapInput, 'idempotency_key'> & {
+  capability_map_id: string;
+  dossier_id: string;
+  based_on_model_revision: number;
+  based_on_diagnostic_version: number;
+  created_by: string;
+  created_at: string;
+};

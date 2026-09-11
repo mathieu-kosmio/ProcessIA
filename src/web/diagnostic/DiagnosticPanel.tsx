@@ -1,9 +1,15 @@
 import { useState } from 'react';
-import type { Diagnostic, PriorityLevel, TargetComparison } from '../../contracts/diagnostic.ts';
+import type {
+  CapabilityMap,
+  Diagnostic,
+  PriorityLevel,
+  TargetComparison,
+} from '../../contracts/diagnostic.ts';
 
 type Props = {
   diagnostics: Diagnostic[];
   targets: TargetComparison[];
+  capabilities: CapabilityMap[];
   onRevisePriority: (
     diagnosticId: string,
     opportunityId: string,
@@ -21,7 +27,13 @@ const priorityLabels = {
   unknown: 'Inconnue',
 } as const;
 
-export function DiagnosticPanel({ diagnostics, targets, onRevisePriority, onClose }: Props) {
+export function DiagnosticPanel({
+  diagnostics,
+  targets,
+  capabilities,
+  onRevisePriority,
+  onClose,
+}: Props) {
   const [editingPriority, setEditingPriority] = useState<string>();
   const [priorityLevel, setPriorityLevel] = useState<PriorityLevel>('high');
   const [priorityJustification, setPriorityJustification] = useState('');
@@ -67,7 +79,7 @@ export function DiagnosticPanel({ diagnostics, targets, onRevisePriority, onClos
         </button>
       </div>
 
-      {diagnostics.length === 0 && targets.length === 0 ? (
+      {diagnostics.length === 0 && targets.length === 0 && capabilities.length === 0 ? (
         <div className="diagnostic-empty">
           <strong>Aucun diagnostic préparé</strong>
           <p>Un périmètre et des constats validables sont nécessaires.</p>
@@ -271,6 +283,54 @@ export function DiagnosticPanel({ diagnostics, targets, onRevisePriority, onClos
                   </footer>
                 </section>
               ))}
+            </article>
+          ))}
+          {capabilities.map((capability) => (
+            <article
+              className="capability-map"
+              aria-label={`Capacité mutualisable ${capability.label}`}
+              key={capability.capability_map_id}
+            >
+              <header>
+                <div>
+                  <span className="diagnostic-kicker">ARCHITECTURE DE CAPACITÉS</span>
+                  <h3>Capacité mutualisable : {capability.label}</h3>
+                  <p>{capability.description}</p>
+                </div>
+                <div className="capability-meta">
+                  <span>{capability.usage_bindings.length} usages · périmètres séparés</span>
+                  <small>Diagnostic v{capability.based_on_diagnostic_version}</small>
+                </div>
+              </header>
+
+              <div className="capability-bindings">
+                {capability.usage_bindings.map((binding, index) => (
+                  <section key={binding.usage_id}>
+                    <span className="capability-index">{String(index + 1).padStart(2, '0')}</span>
+                    <div>
+                      <strong>{binding.label}</strong>
+                      <p>{binding.context}</p>
+                      <small>
+                        {binding.task_ids.length} tâche{binding.task_ids.length > 1 ? 's' : ''} liée
+                        {binding.task_ids.length > 1 ? 's' : ''}
+                      </small>
+                    </div>
+                    <span className={`capability-scope ${binding.required_scope}`}>
+                      {binding.required_scope === 'private'
+                        ? 'Préparation privée'
+                        : 'Projection partagée'}
+                    </span>
+                  </section>
+                ))}
+              </div>
+
+              <footer className="capability-boundary">
+                <div>
+                  <span>Fournisseur à choisir</span>
+                  <span>Exécution désactivée</span>
+                </div>
+                <strong>Aucun accès aux données n’est mutualisé.</strong>
+              </footer>
             </article>
           ))}
           {targets.map((target) => (

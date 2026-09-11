@@ -12,6 +12,7 @@ import { BpmnService } from '../adapters/bpmn/service.ts';
 import { InterviewReviewService } from '../application/interview-review/service.ts';
 import { DiagnosticService } from '../application/diagnostic/service.ts';
 import { TargetScenarioService } from '../application/diagnostic/target-service.ts';
+import { CapabilityService } from '../application/diagnostic/capability-service.ts';
 
 const requestedDatabasePath = process.env.PROCESSIA_DB_PATH ?? resolve('.local/processia.sqlite');
 const ephemeralDatabase = requestedDatabasePath === ':memory:';
@@ -28,6 +29,7 @@ const bpmn = new BpmnService(databasePath, service);
 const reviews = new InterviewReviewService(databasePath, service, sources);
 const diagnostics = new DiagnosticService(databasePath, service, reviews);
 const targets = new TargetScenarioService(databasePath, service);
+const capabilityMaps = new CapabilityService(databasePath, service, diagnostics);
 sources.add(demoSession, {
   dossier_id: 'demo-kosmio',
   idempotency_key: 'demo-source-cadrage-v1',
@@ -83,7 +85,7 @@ const demoInvestigation = reviews.consolidate(demoSession, 'demo-kosmio', {
   ],
   target_role: { role_id: 'role-direction', label: 'Direction' },
 });
-diagnostics.create(demoSession, 'demo-kosmio', {
+const demoDiagnostic = diagnostics.create(demoSession, 'demo-kosmio', {
   idempotency_key: 'demo-diagnostic-roadmap-v1',
   model_id: 'process-diagnostic',
   scope: {
@@ -138,6 +140,34 @@ diagnostics.create(demoSession, 'demo-kosmio', {
     },
   },
 });
+if (capabilityMaps.list(demoSession, 'demo-kosmio', 'process-diagnostic').items.length === 0) {
+  capabilityMaps.create(demoSession, 'demo-kosmio', {
+    idempotency_key: 'demo-capability-quote-extraction-v1',
+    model_id: 'process-diagnostic',
+    diagnostic_id: demoDiagnostic.diagnostic_id,
+    capability_id: 'capability-quote-extraction',
+    label: 'Extraction structurée de devis',
+    description: 'Extraire des champs proposés, puis demander une validation humaine.',
+    provider: null,
+    execution: 'disabled',
+    usage_bindings: [
+      {
+        usage_id: 'usage-prepare-quote',
+        label: 'Préparer un devis reçu',
+        context: 'Identifier les références utiles pendant la préparation du dossier.',
+        task_ids: ['task-preparation'],
+        required_scope: 'private',
+      },
+      {
+        usage_id: 'usage-review-quote',
+        label: 'Contrôler le devis avant restitution',
+        context: 'Comparer les champs proposés aux règles partagées et validées.',
+        task_ids: ['task-restitution'],
+        required_scope: 'shared',
+      },
+    ],
+  });
+}
 if (targets.list(demoSession, 'demo-kosmio', 'process-diagnostic').items.length === 0) {
   const currentModel = service.getModel(demoSession, 'demo-kosmio', 'process-diagnostic');
   const restitution = currentModel.tasks.find((task) => task.id === 'task-restitution');
@@ -202,7 +232,17 @@ const server = createAppServer(
     res.end(req.method === 'HEAD' ? undefined : readFileSync(file));
   },
   demoSession,
-  { sources, sharing, enrichments, interviews, bpmn, reviews, diagnostics, targets },
+  {
+    sources,
+    sharing,
+    enrichments,
+    interviews,
+    bpmn,
+    reviews,
+    diagnostics,
+    targets,
+    capabilityMaps,
+  },
 );
 if (!production) {
   const { createServer } = await import('vite');
@@ -216,6 +256,7 @@ async function shutdown() {
   await vite?.close();
   server.close(() => {
     interviews.close();
+    capabilityMaps.close();
     diagnostics.close();
     targets.close();
     reviews.close();

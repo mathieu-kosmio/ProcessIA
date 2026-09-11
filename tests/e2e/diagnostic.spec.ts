@@ -72,4 +72,27 @@ test('T010 : relier un constat, une opportunité et un essai sans valeur invent�
     priorityHistory.getByText('Modifiée par local-consultant', { exact: true }),
   ).toBeVisible();
   await expect(priorityHistory.getByText(justification, { exact: true })).toBeVisible();
+
+  const capability = page.getByRole('article', {
+    name: 'Capacité mutualisable Extraction structurée de devis',
+  });
+  await expect(
+    capability.getByRole('heading', {
+      name: 'Capacité mutualisable : Extraction structurée de devis',
+    }),
+  ).toBeVisible();
+  await expect(
+    capability.getByText('2 usages · périmètres séparés', { exact: true }),
+  ).toBeVisible();
+  await expect(capability.getByText('Préparer un devis reçu', { exact: true })).toBeVisible();
+  await expect(
+    capability.getByText('Contrôler le devis avant restitution', { exact: true }),
+  ).toBeVisible();
+  await expect(capability.getByText('Préparation privée', { exact: true })).toBeVisible();
+  await expect(capability.getByText('Projection partagée', { exact: true })).toBeVisible();
+  await expect(capability.getByText('Fournisseur à choisir', { exact: true })).toBeVisible();
+  await expect(capability.getByText('Exécution désactivée', { exact: true })).toBeVisible();
+  await expect(
+    capability.getByText('Aucun accès aux données n’est mutualisé.', { exact: true }),
+  ).toBeVisible();
 });

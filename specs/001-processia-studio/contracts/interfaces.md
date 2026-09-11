@@ -127,6 +127,8 @@ Routes locales :
 - `GET /api/dossiers/:dossier/models/:model/diagnostics` : liste les diagnostics privés accessibles du modèle.
 - `POST /api/dossiers/:dossier/models/:model/diagnostics` : crée un diagnostic privé rattaché à la révision courante, à un constat et à une investigation accessible.
 - `POST /api/dossiers/:dossier/models/:model/diagnostics/:diagnostic/opportunities/:opportunity/priority` : révise une priorité avec version de base et justification ; l'auteur provient de la session.
+- `GET /api/dossiers/:dossier/models/:model/capabilities` : liste les architectures conceptuelles accessibles du diagnostic.
+- `POST /api/dossiers/:dossier/models/:model/capabilities` : relie une capacité à au moins deux usages dont les contextes, tâches et périmètres restent distincts.
 
 L'historique et la liste des dossiers ne sont pas encore paginés. HTTP local exige un Host `127.0.0.1:port` et une origine identique pour les POST. Codes HTTP : 403 accès, 409 concurrence, 422 commande invalide, 400 JSON invalide, 413 corps trop grand, 415 contenu autre que JSON. Les réponses de proposition utilisent leur statut métier.
 
@@ -193,4 +195,6 @@ La comparaison actuel/cible utilise les routes privées suivantes :
 
 Le noyau accepte une modification `update_task_label`. Elle conserve l'identifiant de tâche, la valeur de référence, la valeur cible, l'origine humaine ou IA et sa justification. La validation d'une cible ne commande aucune mutation du modèle. Si sa révision de départ diffère de la révision actuelle, la lecture retourne `reference_status: outdated` et `reconciliation_required: true` avec les valeurs actuelle, de référence et cible. Les écritures sont idempotentes et protégées par une version propre au scénario cible.
 
-Les autres types de changements cibles, les modifications historisées du diagnostic et de la priorité, les capacités mutualisées, la publication et l'export restent ouverts.
+L'architecture de capacités référence un diagnostic existant et sa version courante. Elle exige au moins deux identifiants d'usage distincts. Chaque liaison contient un libellé, un contexte, des tâches existantes et un périmètre requis `private` ou `shared`. Le périmètre appartient à la liaison et aucune propriété ne crée un accès commun au niveau de la capacité. Le fournisseur reste `null` et l'exécution `disabled`. L'écriture est idempotente et exige les droits privés du modèle.
+
+Les autres types de changements cibles, les modifications historisées du diagnostic hors priorité, la publication et l'export restent ouverts.

@@ -19,6 +19,10 @@ import {
   type TargetScenarioService,
 } from '../application/diagnostic/target-service.ts';
 import {
+  CapabilityError,
+  type CapabilityService,
+} from '../application/diagnostic/capability-service.ts';
+import {
   createSharePreviewSchema,
   publishShareSchema,
   revokeShareSchema,
@@ -291,6 +295,31 @@ const validateTargetScenarioSchema = z
     justification: z.string().trim().min(1).max(1000),
   })
   .strict();
+const createCapabilityMapSchema = z
+  .object({
+    idempotency_key: z.string().min(1).max(120),
+    diagnostic_id: z.string().min(1).max(120),
+    capability_id: z.string().min(1).max(120),
+    label: z.string().trim().min(1).max(240),
+    description: z.string().trim().min(1).max(1000),
+    provider: z.null(),
+    execution: z.literal('disabled'),
+    usage_bindings: z
+      .array(
+        z
+          .object({
+            usage_id: z.string().min(1).max(120),
+            label: z.string().trim().min(1).max(240),
+            context: z.string().trim().min(1).max(1000),
+            task_ids: z.array(z.string().min(1).max(120)).min(1).max(50),
+            required_scope: z.enum(['private', 'shared']),
+          })
+          .strict(),
+      )
+      .min(2)
+      .max(20),
+  })
+  .strict();
 class HttpError extends Error {
   constructor(
     public status: number,
@@ -336,6 +365,7 @@ export function createAppServer(
     reviews?: InterviewReviewService;
     diagnostics?: DiagnosticService;
     targets?: TargetScenarioService;
+    capabilityMaps?: CapabilityService;
   } = {},
 ) {
   return createServer(async (req, res) => {
@@ -525,6 +555,29 @@ export function createAppServer(
             targetsMatch[3],
             parsed.data,
           ),
+        );
+        return;
+      }
+      const capabilityMapsMatch =
+        /^\/api\/dossiers\/([\w-]+)\/models\/([\w-]+)\/capabilities$/.exec(path);
+      if (req.method === 'GET' && capabilityMapsMatch && capabilities.capabilityMaps) {
+        json(
+          res,
+          200,
+          capabilities.capabilityMaps.list(session, capabilityMapsMatch[1], capabilityMapsMatch[2]),
+        );
+        return;
+      }
+      if (req.method === 'POST' && capabilityMapsMatch && capabilities.capabilityMaps) {
+        const parsed = createCapabilityMapSchema.safeParse(await body(req));
+        if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+        json(
+          res,
+          201,
+          capabilities.capabilityMaps.create(session, capabilityMapsMatch[1], {
+            model_id: capabilityMapsMatch[2],
+            ...parsed.data,
+          }),
         );
         return;
       }
@@ -755,35 +808,44 @@ export function createAppServer(
                     ? 409
                     : error instanceof DiagnosticError && error.code === 'DIAGNOSTIC_NOT_FOUND'
                       ? 404
-                      : error instanceof TargetScenarioError &&
-                          ['IDEMPOTENCY_CONFLICT', 'MODEL_CONFLICT', 'TARGET_CONFLICT'].includes(
-                            error.code,
-                          )
+                      : error instanceof CapabilityError && error.code === 'IDEMPOTENCY_CONFLICT'
                         ? 409
-                        : error instanceof TargetScenarioError && error.code === 'TARGET_NOT_FOUND'
+                        : error instanceof CapabilityError && error.code === 'DIAGNOSTIC_NOT_FOUND'
                           ? 404
-                          : error instanceof InterviewReviewError && error.code === 'NO_DIVERGENCE'
-                            ? 422
-                            : error instanceof InterviewError
-                              ? 400
-                              : error instanceof InterviewReviewError ||
-                                  error instanceof DiagnosticError ||
-                                  error instanceof TargetScenarioError
-                                ? 400
-                                : error instanceof EnrichmentError
+                          : error instanceof TargetScenarioError &&
+                              [
+                                'IDEMPOTENCY_CONFLICT',
+                                'MODEL_CONFLICT',
+                                'TARGET_CONFLICT',
+                              ].includes(error.code)
+                            ? 409
+                            : error instanceof TargetScenarioError &&
+                                error.code === 'TARGET_NOT_FOUND'
+                              ? 404
+                              : error instanceof InterviewReviewError &&
+                                  error.code === 'NO_DIVERGENCE'
+                                ? 422
+                                : error instanceof InterviewError
                                   ? 400
-                                  : error instanceof SharingError &&
-                                      [
-                                        'IDEMPOTENCY_CONFLICT',
-                                        'PREVIEW_INVALID',
-                                        'VERSION_CONFLICT',
-                                      ].includes(error.code)
-                                    ? 409
-                                    : error instanceof SourceError
+                                  : error instanceof InterviewReviewError ||
+                                      error instanceof DiagnosticError ||
+                                      error instanceof TargetScenarioError ||
+                                      error instanceof CapabilityError
+                                    ? 400
+                                    : error instanceof EnrichmentError
                                       ? 400
-                                      : error instanceof HttpError
-                                        ? error.status
-                                        : 500;
+                                      : error instanceof SharingError &&
+                                          [
+                                            'IDEMPOTENCY_CONFLICT',
+                                            'PREVIEW_INVALID',
+                                            'VERSION_CONFLICT',
+                                          ].includes(error.code)
+                                        ? 409
+                                        : error instanceof SourceError
+                                          ? 400
+                                          : error instanceof HttpError
+                                            ? error.status
+                                            : 500;
       json(res, status, {
         code:
           error instanceof AccessDenied
@@ -794,7 +856,8 @@ export function createAppServer(
                 error instanceof InterviewError ||
                 error instanceof InterviewReviewError ||
                 error instanceof DiagnosticError ||
-                error instanceof TargetScenarioError
+                error instanceof TargetScenarioError ||
+                error instanceof CapabilityError
               ? error.code
               : error instanceof HttpError
                 ? error.code
@@ -808,7 +871,8 @@ export function createAppServer(
                 error instanceof InterviewError ||
                 error instanceof InterviewReviewError ||
                 error instanceof DiagnosticError ||
-                error instanceof TargetScenarioError
+                error instanceof TargetScenarioError ||
+                error instanceof CapabilityError
               ? error.message
               : 'La demande a échoué. Vos modifications déjà enregistrées sont conservées.',
       });
