@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src tests *.ts *.json index.html",
     "format:check": "prettier --check src tests *.ts *.json index.html",
-    "test": "node --import tsx --test --test-reporter=spec tests/integration/*.test.ts tests/contract/*.test.ts",
+    "test": "node --import tsx --test --test-reporter=spec tests/integration/*.test.ts tests/contract/*.test.ts tests/domain/*.test.ts",
     "test:e2e": "npm run build && playwright test"
   },
   "dependencies": {

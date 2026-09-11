@@ -13,8 +13,16 @@ import { Canvas } from './Canvas.tsx';
 import { TaskInspector, type TaskDetailValues } from './TaskInspector.tsx';
 import { CreateDossierDialog } from './CreateDossierDialog.tsx';
 import { SharingPanel } from '../sharing/SharingPanel.tsx';
+import type {
+  BpmnCommand,
+  BpmnDocument,
+  BpmnResult,
+  BpmnValidation,
+} from '../../contracts/bpmn.ts';
+import { BpmnPanel } from '../bpmn/BpmnPanel.tsx';
 
 const modelPath = (dossierId: string) => `/api/dossiers/${dossierId}/models/process-diagnostic`;
+const bpmnPath = (dossierId: string) => `${modelPath(dossierId)}/bpmn`;
 async function read<T>(path: string): Promise<T> {
   const response = await fetch(path);
   if (!response.ok) throw new Error('La carte est momentanément indisponible. Réessayez.');
@@ -134,6 +142,9 @@ export function Studio() {
   const [view, setView] = useState<'map' | 'list'>('map');
   const [showHistory, setShowHistory] = useState(false);
   const [showSharing, setShowSharing] = useState(false);
+  const [showBpmn, setShowBpmn] = useState(false);
+  const [bpmnDocument, setBpmnDocument] = useState<BpmnDocument>();
+  const [bpmnValidation, setBpmnValidation] = useState<BpmnValidation>();
   const [text, setText] = useState('');
   const [proposal, setProposal] = useState<Proposal>();
   const [busy, setBusy] = useState(false);
@@ -175,6 +186,9 @@ export function Studio() {
     setSelected(undefined);
     setShowHistory(false);
     setShowSharing(false);
+    setShowBpmn(false);
+    setBpmnDocument(undefined);
+    setBpmnValidation(undefined);
     setProposal(undefined);
     stopMicrophone();
     setInterview(undefined);
@@ -222,6 +236,48 @@ export function Studio() {
       } else {
         setError(result.message ?? 'La modification a été refusée.');
       }
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+    return false;
+  }
+  async function openBpmn() {
+    setBusy(true);
+    setError('');
+    try {
+      const path = bpmnPath(activeDossier);
+      const [document, validation] = await Promise.all([
+        read<BpmnDocument>(path),
+        read<BpmnValidation>(`${path}/validation`),
+      ]);
+      setBpmnDocument(document);
+      setBpmnValidation(validation);
+      setShowBpmn(true);
+      setShowHistory(false);
+      setShowSharing(false);
+      setSelected(undefined);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function applyBpmn(command: BpmnCommand) {
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const path = bpmnPath(activeDossier);
+      const result = await post<BpmnResult>(`${path}/commands`, command);
+      if (result.status === 'applied' && result.document) {
+        setBpmnDocument(result.document);
+        setBpmnValidation(await read<BpmnValidation>(`${path}/validation`));
+        setNotice('Navigation BPMN enregistrée.');
+        return true;
+      }
+      setError(result.message ?? 'La modification BPMN a été refusée.');
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -449,6 +505,14 @@ export function Studio() {
             <span className="private-badge">♧ Préparation privée</span>
             <button
               className="secondary"
+              onClick={showBpmn ? () => setShowBpmn(false) : openBpmn}
+              aria-pressed={showBpmn}
+              aria-label={showBpmn ? 'Revenir à la carte' : 'Ouvrir le profil BPMN'}
+            >
+              ◫ {showBpmn ? 'Carte métier' : 'Profil BPMN'}
+            </button>
+            <button
+              className="secondary"
               onClick={() => {
                 setShowHistory(!showHistory);
                 setSelected(undefined);
@@ -495,6 +559,14 @@ export function Studio() {
           <div className="loading" role="status">
             Ouverture du dossier…
           </div>
+        ) : showBpmn && bpmnDocument && bpmnValidation ? (
+          <BpmnPanel
+            document={bpmnDocument}
+            validation={bpmnValidation}
+            busy={busy}
+            onCommand={applyBpmn}
+            onClose={() => setShowBpmn(false)}
+          />
         ) : (
           <>
             <section

@@ -8,6 +8,7 @@ import { SourceError, type SourceService } from '../application/sources/service.
 import { SharingError, type SharingService } from '../application/sharing/service.ts';
 import { EnrichmentError, type EnrichmentService } from '../application/interviews/enrichment.ts';
 import { InterviewError, type InterviewService } from '../application/interviews/session.ts';
+import type { BpmnService } from '../adapters/bpmn/service.ts';
 import {
   createSharePreviewSchema,
   publishShareSchema,
@@ -72,6 +73,73 @@ const interviewTurnSchema = z
   .strict();
 const interviewResponseSchema = z.object({ text: z.string().trim().min(1).max(2000) }).strict();
 const transcriptCorrectionSchema = z.object({ text: z.string().trim().min(1).max(2000) }).strict();
+const bpmnNodeSchema = z
+  .object({
+    id: z.string().min(1).max(120),
+    type: z.enum([
+      'startEvent',
+      'endEvent',
+      'task',
+      'userTask',
+      'manualTask',
+      'serviceTask',
+      'exclusiveGateway',
+      'parallelGateway',
+      'subprocess',
+      'textAnnotation',
+      'dataObject',
+      'dataStore',
+    ]),
+    label: z.string().trim().min(1).max(240),
+    process_id: z.string().min(1).max(120),
+    participant_id: z.string().min(1).max(120),
+    lane_id: z.string().min(1).max(120).optional(),
+    parent_subprocess_id: z.string().min(1).max(120).nullable(),
+    position: z.object({ x: z.number().finite(), y: z.number().finite() }).strict(),
+    collapsed: z.boolean().optional(),
+    execution: z.literal('disabled').optional(),
+  })
+  .strict();
+const bpmnFlowSchema = z
+  .object({
+    id: z.string().min(1).max(120),
+    type: z.enum(['sequenceFlow', 'messageFlow', 'association']),
+    source_id: z.string().min(1).max(120),
+    target_id: z.string().min(1).max(120),
+    condition: z.string().trim().max(500).optional(),
+  })
+  .strict();
+const bpmnCommandSchema = z
+  .object({
+    command_id: z.string().min(1).max(120),
+    base_revision: z.number().int().nonnegative(),
+    operations: z
+      .array(
+        z.discriminatedUnion('type', [
+          z.object({ type: z.literal('ADD_NODE'), node: bpmnNodeSchema }).strict(),
+          z.object({ type: z.literal('ADD_FLOW'), flow: bpmnFlowSchema }).strict(),
+          z
+            .object({
+              type: z.literal('TOGGLE_SUBPROCESS'),
+              subprocess_id: z.string().min(1).max(120),
+              collapsed: z.boolean(),
+            })
+            .strict(),
+          z
+            .object({
+              type: z.literal('SET_VIEW'),
+              open_process_id: z.string().min(1).max(120),
+              breadcrumb_ids: z.array(z.string().min(1).max(120)).min(1).max(20),
+              selected_id: z.string().min(1).max(120).optional(),
+              zoom: z.number().min(0.25).max(4),
+            })
+            .strict(),
+        ]),
+      )
+      .min(1)
+      .max(50),
+  })
+  .strict();
 class HttpError extends Error {
   constructor(
     public status: number,
@@ -113,6 +181,7 @@ export function createAppServer(
     sharing?: SharingService;
     enrichments?: EnrichmentService;
     interviews?: InterviewService;
+    bpmn?: BpmnService;
   } = {},
 ) {
   return createServer(async (req, res) => {
@@ -175,6 +244,29 @@ export function createAppServer(
               : result.status === 'rejected'
                 ? 422
                 : 200,
+          result,
+        );
+        return;
+      }
+      const bpmnMatch =
+        /^\/api\/dossiers\/([\w-]+)\/models\/([\w-]+)\/bpmn(\/validation|\/commands)?$/.exec(path);
+      if (req.method === 'GET' && bpmnMatch && capabilities.bpmn) {
+        json(
+          res,
+          200,
+          bpmnMatch[3] === '/validation'
+            ? capabilities.bpmn.validate(session, bpmnMatch[1], bpmnMatch[2])
+            : capabilities.bpmn.get(session, bpmnMatch[1], bpmnMatch[2]),
+        );
+        return;
+      }
+      if (req.method === 'POST' && bpmnMatch?.[3] === '/commands' && capabilities.bpmn) {
+        const parsed = bpmnCommandSchema.safeParse(await body(req));
+        if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+        const result = capabilities.bpmn.execute(session, bpmnMatch[1], bpmnMatch[2], parsed.data);
+        json(
+          res,
+          result.status === 'conflict' ? 409 : result.status === 'rejected' ? 422 : 200,
           result,
         );
         return;

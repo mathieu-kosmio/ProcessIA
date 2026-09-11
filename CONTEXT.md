@@ -1,6 +1,6 @@
 # Contexte de ProcessIA
 
-Mis à jour le 9 septembre 2026 à partir des échanges de conception avec Mathieu.
+Mis à jour le 11 septembre 2026 à partir des échanges de conception avec Mathieu.
 
 ## Identité
 
@@ -8,7 +8,7 @@ Mis à jour le 9 septembre 2026 à partir des échanges de conception avec Mathi
 - Dossier de travail : `/Users/mathieu/Dev/ProcessIA`.
 - Dépôt : `https://github.com/mathieu-kosmio/ProcessIA`.
 - Projet distinct de Bretelles. Aucune contrainte de fournisseur, de runtime ou de déploiement de Bretelles n'est automatiquement reconduite.
-- Stade : développement local démarré le 9 septembre 2026, tranches T001 à T005 vérifiées.
+- Stade : développement local démarré le 9 septembre 2026, tranches T001 à T006 vérifiées, socle T007 et noyau T008 vérifiés avec leurs limites documentées.
 
 ## Décisions confirmées
 
@@ -55,6 +55,6 @@ Statut : spécifications rédigées pour revue. Constitution, règles détaillé
 
 ## Démarrage du développement le 9 septembre 2026
 
-Mathieu demande de lancer puis de poursuivre le développement avec le dépôt GitHub ProcessIA. T001 à T006 utilisent des données synthétiques et un adaptateur de langage simulé. TypeScript, React, Vite, React Flow et SQLite constituent un choix local réversible décrit dans ADR-0001. Les six tranches sont vérifiées localement au 10 septembre 2026 : canevas persisté, commandes versionnées, dossiers distincts, accès bornés, fiches de tâches, ingestion textuelle privée via MCP stdio, partage explicite d'une reformulation filtrée, dialogue contextualisé et enrichissement sourcé. T007 possède un socle local en cours de validation pour la continuité voix-texte, sans reconnaissance ni synthèse vocale réelle. Cette demande ne vaut pas ratification globale des propositions ni choix des fournisseurs ou de l'identité du pilote externe.
+Mathieu demande de lancer puis de poursuivre le développement avec le dépôt GitHub ProcessIA. T001 à T008 utilisent des données synthétiques et un adaptateur de langage simulé. TypeScript, React, Vite, React Flow et SQLite constituent un choix local réversible décrit dans ADR-0001. T001 à T006 sont vérifiées localement. T007 possède un socle vérifié pour la continuité voix-texte, sans reconnaissance ni synthèse vocale réelle. T008 possède un noyau BPMN vérifié : participants, couloirs, types V1, sous-processus, règles de flux, anomalies et navigation persistée. La palette complète, la carte macro et l'aller-retour XML restent ouverts. Cette demande ne vaut pas ratification globale des propositions ni choix des fournisseurs ou de l'identité du pilote externe.
 
-Le paragraphe de statut v0.2 ci-dessus décrit l'état au moment de la rédaction. L'état courant, les preuves et les limites sont désormais dans `IMPLEMENTATION_PLAN.md` et les fiches `docs/validation/T001.md` à `T007.md`.
+Le paragraphe de statut v0.2 ci-dessus décrit l'état au moment de la rédaction. L'état courant, les preuves et les limites sont désormais dans `IMPLEMENTATION_PLAN.md` et les fiches `docs/validation/T001.md` à `T008.md`.

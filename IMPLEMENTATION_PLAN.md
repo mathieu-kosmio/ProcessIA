@@ -1,6 +1,6 @@
 # ProcessIA · Suivi de développement
 
-Version 0.8.0, 10 septembre 2026. Développement local en cours, par tranches verticales TDD.
+Version 0.9.0, 11 septembre 2026. Développement local en cours, par tranches verticales TDD.
 
 | Tranche | Parcours principal | Résultat | État |
 | --- | --- | --- | --- |
@@ -11,7 +11,7 @@ Version 0.8.0, 10 septembre 2026. Développement local en cours, par tranches ve
 | T005 | US01 | Partager une projection maîtrisée | Vérifié localement |
 | T006 | US03 | Relier dialogue écrit, sélection et commandes | Vérifié localement |
 | T007 | US03 | Ajouter la voix et les reprises | Socle local vérifié, intégration ouverte |
-| T008 | US04 | Compléter la navigation et le profil BPMN | Non commencé |
+| T008 | US04 | Compléter la navigation et le profil BPMN | Noyau local vérifié |
 | T009 | US05 | Assister et consolider les entretiens | Non commencé |
 | T010 | US06 | Produire un diagnostic et une feuille de route | Non commencé |
 | T011 | US07 | Figer et exporter les résultats autorisés | Non commencé |
@@ -145,3 +145,21 @@ Premier comportement visé : obtenir un accord explicite avant l'accès au micro
 Preuve : `docs/validation/T007.md`. Vérification consolidée : 37 tests d'intégration et de contrat, build TypeScript/Vite et 11 parcours Chromium réussis.
 
 Limites : le navigateur accède au microphone uniquement pour vérifier l'autorisation et l'état local ; aucun adaptateur de reconnaissance ou de synthèse vocale n'est branché. Dans la démonstration, le texte transcrit est saisi dans le champ de relecture. Les accords de plusieurs participants, le retrait d'accord avec règles sur les données déjà conservées, la détection d'une coupure matérielle et l'interruption réseau pendant une génération réelle restent à développer. La durée `session` est liée au processus serveur local ; les durées et responsabilités du pilote exigent la décision DEC-04.
+
+## T008 · Navigation et profil BPMN local
+
+Statut : noyau vérifié localement le 11 septembre 2026. L'import et l'export XML restent ouverts dans DEC-05 et T011. Révision Git : jalon T008 documenté dans l'historique du dépôt.
+
+Premier comportement visé : ouvrir la vue BPMN depuis le studio, naviguer dans un sous-processus sans perdre ses trois tâches, sa sélection ni son zoom, accepter une séquence entre couloirs d'un même participant et refuser atomiquement une séquence entre participants ou une commande obsolète.
+
+| Cycle | Exigences | Rouge observé | Résultat vérifié |
+| --- | --- | --- | --- |
+| Profil de domaine | FR-022, FR-023, TC-022, TC-023 | Le test échouait sur l'absence du domaine BPMN | Types V1 bornés, serviceTask non exécutable, règles de flux et frontières de sous-processus validées |
+| Brouillon et anomalies | FR-023, TC-023 | Aucune validation localisée n'existait | Le brouillon reste éditable ; les événements de début ou fin manquants sont rattachés au processus concerné |
+| Persistance et concurrence | FR-025, TC-025 | Le service BPMN persistant était absent | Commandes atomiques et idempotentes, révision optimiste, droits relus avant lecture et écriture |
+| Contrat HTTP | FR-022, FR-023, FR-025 | La lecture retournait 404 et aucune commande BPMN n'était exposée | Lecture, validation et commandes exposées ; refus métier en 422 et conflit en 409 |
+| Studio web | FR-021, FR-022, TC-021, TC-022 | Le bouton et la vue BPMN étaient absents | Participants, couloirs, types, flux, anomalies, fil de navigation, zoom et sélection persistée vérifiés dans Chromium |
+
+Preuve : `docs/validation/T008.md`. Vérification consolidée : 50 tests de domaine, d'intégration et de contrat ainsi que 13 parcours Chromium réussis.
+
+Limites : la vue relie un document BPMN détaillé au modèle courant par `model_id`, mais elle ne synchronise pas encore toutes les éditions entre le graphe de tâches React Flow et le document BPMN. La palette visuelle d'ajout, le déplacement entre couloirs, la carte macro de chaîne de valeur, l'import XML, l'export et l'aller-retour de fidélité restent à développer. Le profil détaillé est une proposition de conception conforme à la spécification actuelle ; il ne déclenche aucune exécution de serviceTask.

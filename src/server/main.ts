@@ -8,6 +8,7 @@ import { SourceService } from '../application/sources/service.ts';
 import { SharingService } from '../application/sharing/service.ts';
 import { EnrichmentService } from '../application/interviews/enrichment.ts';
 import { InterviewService } from '../application/interviews/session.ts';
+import { BpmnService } from '../adapters/bpmn/service.ts';
 
 const requestedDatabasePath = process.env.PROCESSIA_DB_PATH ?? resolve('.local/processia.sqlite');
 const ephemeralDatabase = requestedDatabasePath === ':memory:';
@@ -20,6 +21,7 @@ const sources = new SourceService(databasePath);
 const sharing = new SharingService(databasePath);
 const enrichments = new EnrichmentService(databasePath, service, sources);
 const interviews = new InterviewService(databasePath, service);
+const bpmn = new BpmnService(databasePath, service);
 sources.add(demoSession, {
   dossier_id: 'demo-kosmio',
   idempotency_key: 'demo-source-cadrage-v1',
@@ -67,7 +69,7 @@ const server = createAppServer(
     res.end(req.method === 'HEAD' ? undefined : readFileSync(file));
   },
   demoSession,
-  { sources, sharing, enrichments, interviews },
+  { sources, sharing, enrichments, interviews, bpmn },
 );
 if (!production) {
   const { createServer } = await import('vite');
@@ -81,6 +83,7 @@ async function shutdown() {
   await vite?.close();
   server.close(() => {
     interviews.close();
+    bpmn.close();
     enrichments.close();
     sharing.close();
     sources.close();

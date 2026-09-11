@@ -119,6 +119,9 @@ Routes locales :
 - `POST /api/interviews/:interview/turns` : ajoute un tour idempotent avec son mode et sa sélection figée.
 - `POST /api/interviews/:interview/responses` et `POST /api/interviews/:interview/interrupt` : bornent une réponse interruptible sans commande implicite.
 - `POST /api/interviews/:interview/messages/:message/correct` : conserve l'original et ajoute une correction attribuée.
+- `GET /api/dossiers/:dossier/models/:model/bpmn` : lit le document BPMN détaillé autorisé et sa vue persistée.
+- `GET /api/dossiers/:dossier/models/:model/bpmn/validation` : retourne les anomalies localisées du brouillon et sa capacité d'export selon le profil.
+- `POST /api/dossiers/:dossier/models/:model/bpmn/commands` : applique une commande BPMN atomique liée à la révision courante.
 
 L'historique et la liste des dossiers ne sont pas encore paginés. HTTP local exige un Host `127.0.0.1:port` et une origine identique pour les POST. Codes HTTP : 403 accès, 409 concurrence, 422 commande invalide, 400 JSON invalide, 413 corps trop grand, 415 contenu autre que JSON. Les réponses de proposition utilisent leur statut métier.
 
@@ -150,3 +153,11 @@ La réponse partagée contient l'identifiant et la version de publication, le te
 Le contrat `src/contracts/interview.ts` décrit une session active, son mode, l'état vocal visible, le consentement, la politique de transcription et une suite ordonnée de messages. Un tour vocal exige un consentement accordé et une politique différente de `none`. Un tour écrit reste disponible dans tous les cas. Le rejeu d'une même clé avec un contenu identique retourne le message existant ; une autre charge utile échoue.
 
 Une correction met à jour le texte utilisé pour la prochaine interprétation et conserve chaque valeur précédente avec auteur et date. Une réponse interrompue passe à l'état `interrupted`. Cette transition n'appelle pas le service de commandes et ne peut donc pas appliquer un fragment de modèle. Le flux audio, la reconnaissance et la synthèse sont des frontières d'adaptateur encore ouvertes ; aucun fournisseur réel n'est sélectionné par ce contrat.
+
+## Profil BPMN local exécuté par T008
+
+Le contrat `src/contracts/bpmn.ts` décrit participants, couloirs, nœuds, flux, vue et révision du document. Les commandes locales sont `ADD_NODE`, `ADD_FLOW`, `TOGGLE_SUBPROCESS` et `SET_VIEW`. L'identité et les droits viennent de la session serveur. Une commande porte un `command_id` et une `base_revision` ; un lot rejeté ne modifie pas le document.
+
+Le profil accepte début et fin simples, tâches générique, utilisateur, manuelle et service, passerelles exclusive et parallèle, sous-processus incorporé, annotation, objet et stockage de données. Les flux sont `sequenceFlow`, `messageFlow` et `association`. La validation refuse une séquence entre participants, un message interne ou un lien traversant directement la frontière d'un sous-processus. Les anomalies d'événement manquant n'empêchent pas la sauvegarde du brouillon mais rendent `valid_for_export` faux.
+
+Cette surface ne constitue pas encore un contrat BPMN XML. La synchronisation générale avec le modèle de tâches, les éléments avancés, la palette visuelle complète, l'import et l'export seront traités dans les cycles suivants et T011. Les bornes HTTP locales sont des décisions de développement, pas des quotas pilote ratifiés.
