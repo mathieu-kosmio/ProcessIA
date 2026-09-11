@@ -35,7 +35,7 @@ Le comportement est lié à une exigence ; l’échec initial du test a été ob
 
 ## 18 · Plan de tâches et traçabilité TDD
 
-**État au 11 septembre 2026 : T001 à T006 vérifiées localement ; socle T007 vérifié avec intégration vocale réelle ouverte ; noyau T008 vérifié avec import/export XML ouverts ; noyau obligatoire T009 vérifié avec compléments SHOULD ouverts.** Les chemins sont proposés dans le plan et sont confirmés ou ajustés à chaque tranche. Chaque ligne représente une tranche métier ; à l’intérieur, traiter un seul comportement par cycle Red → Green → Refactor. Les invariants de qualité et de sécurité sont intégrés dès les tranches concernées, T012 vérifie leur tenue globale.
+**État au 11 septembre 2026 : T001 à T006 vérifiées localement ; socle T007 vérifié avec intégration vocale réelle ouverte ; noyau T008 vérifié avec import/export XML ouverts ; noyau obligatoire T009 vérifié avec compléments SHOULD ouverts ; premier noyau T010 vérifié avec comparaison actuel/cible et édition du diagnostic ouvertes.** Les chemins sont proposés dans le plan et sont confirmés ou ajustés à chaque tranche. Chaque ligne représente une tranche métier ; à l’intérieur, traiter un seul comportement par cycle Red → Green → Refactor. Les invariants de qualité et de sécurité sont intégrés dès les tranches concernées, T012 vérifie leur tenue globale.
 
 ### T001 · Créer la tranche modèle et canevas persisté
 
@@ -185,13 +185,13 @@ Progression locale au 11 septembre 2026 : profil de domaine, persistance SQLite,
 
 **Démonstration de sortie :** Deux témoignages créent une divergence contextualisée sans arbitrage inventé. La planification et les suggestions en direct sont un complément SHOULD, développé après ce noyau.
 
-Progression locale au 11 septembre 2026 : assertions distinctes, provenances privées, absence de vote majoritaire, question de clarification par rôle, idempotence, API et panneau consultant sont vérifiés. La résolution humaine des divergences, leur impact sur le diagnostic, le plan d'entretiens partageable et les suggestions en direct restent ouverts.
+Progression locale au 11 septembre 2026 : assertions distinctes, provenances privées, absence de vote majoritaire, question de clarification par rôle, idempotence, API et panneau consultant sont vérifiés. T010 relie une divergence ouverte à un premier diagnostic privé. La résolution humaine, le plan d'entretiens partageable et les suggestions en direct restent ouverts.
 
 ### T010 · Produire un diagnostic et une feuille de route
 
-- [ ] **[US06] T010-R** : écrire le prochain test public pour le comportement : Une opportunité liée au constat possède prérequis, priorité expliquée, responsable et essai ; une valeur inconnue reste inconnue. Observer son échec pour la bonne raison.
-- [ ] **[US06] T010-G** : implémenter le minimum qui satisfait ce test ; exécuter les vérifications pertinentes.
-- [ ] **[US06] T010-F** : refactoriser avec tests au vert, mettre à jour la trace ; répéter R/G/F pour le comportement suivant.
+- [x] **[US06] T010-R** : écrire le prochain test public pour le comportement : Une opportunité liée au constat possède prérequis, priorité expliquée, responsable et essai ; une valeur inconnue reste inconnue. Observer son échec pour la bonne raison.
+- [x] **[US06] T010-G** : implémenter le minimum qui satisfait ce test ; exécuter les vérifications pertinentes.
+- [x] **[US06] T010-F** : refactoriser avec tests au vert, mettre à jour la trace ; répéter R/G/F pour le comportement suivant.
 
 **Références :** FR-033, FR-034, FR-035, FR-036, FR-037.
 
@@ -202,6 +202,8 @@ Progression locale au 11 septembre 2026 : assertions distinctes, provenances pri
 **Prérequis :** T003, T005, T009 pour la consolidation MUST uniquement ; suggestions en direct non bloquantes.
 
 **Démonstration de sortie :** Une opportunité liée au constat possède prérequis, priorité expliquée, responsable et essai ; une valeur inconnue reste inconnue.
+
+Progression locale au 11 septembre 2026 : diagnostic privé lié à une révision, périmètre et couverture explicites, constat relié à la divergence T009, faisabilité inconnue, priorité proposée et justifiée, responsable humain, prérequis et essai ordonnés sont vérifiés. FR-033, l'édition avec historique FR-035-3, les capacités mutualisées FR-036-1 et l'autonomie ou la mesure après essai FR-037-2 à FR-037-3 restent ouvertes.
 
 ### T011 · Figer et exporter les résultats autorisés
 

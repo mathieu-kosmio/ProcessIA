@@ -10,6 +10,7 @@ import { EnrichmentService } from '../application/interviews/enrichment.ts';
 import { InterviewService } from '../application/interviews/session.ts';
 import { BpmnService } from '../adapters/bpmn/service.ts';
 import { InterviewReviewService } from '../application/interview-review/service.ts';
+import { DiagnosticService } from '../application/diagnostic/service.ts';
 
 const requestedDatabasePath = process.env.PROCESSIA_DB_PATH ?? resolve('.local/processia.sqlite');
 const ephemeralDatabase = requestedDatabasePath === ':memory:';
@@ -24,6 +25,7 @@ const enrichments = new EnrichmentService(databasePath, service, sources);
 const interviews = new InterviewService(databasePath, service);
 const bpmn = new BpmnService(databasePath, service);
 const reviews = new InterviewReviewService(databasePath, service, sources);
+const diagnostics = new DiagnosticService(databasePath, service, reviews);
 sources.add(demoSession, {
   dossier_id: 'demo-kosmio',
   idempotency_key: 'demo-source-cadrage-v1',
@@ -56,7 +58,7 @@ const demoPassageA = sources.status(demoSession, 'demo-kosmio', demoTestimonyA.s
   .passages[0];
 const demoPassageB = sources.status(demoSession, 'demo-kosmio', demoTestimonyB.source_id)
   .passages[0];
-reviews.consolidate(demoSession, 'demo-kosmio', {
+const demoInvestigation = reviews.consolidate(demoSession, 'demo-kosmio', {
   idempotency_key: 'demo-review-validation-rule-v1',
   model_id: 'process-diagnostic',
   subject: {
@@ -78,6 +80,61 @@ reviews.consolidate(demoSession, 'demo-kosmio', {
     },
   ],
   target_role: { role_id: 'role-direction', label: 'Direction' },
+});
+diagnostics.create(demoSession, 'demo-kosmio', {
+  idempotency_key: 'demo-diagnostic-roadmap-v1',
+  model_id: 'process-diagnostic',
+  scope: {
+    label: 'Restitution du diagnostic',
+    task_ids: ['task-priorisation', 'task-restitution'],
+    coverage_limit: 'Deux tâches proposées sur six sont étudiées dans cette démonstration.',
+  },
+  finding: {
+    finding_id: 'finding-validation-divergence',
+    statement: 'La règle de validation de la restitution reste divergente.',
+    kind: 'confirmed_fact',
+    task_ids: ['task-restitution'],
+    investigation_id: demoInvestigation.investigation_id,
+  },
+  opportunity: {
+    opportunity_id: 'opportunity-assisted-review',
+    title: 'Préparer une restitution assistée et sourcée',
+    type: 'ai',
+    beneficiary: 'Responsable de mission',
+    expected_value: {
+      value: 4,
+      justification: 'Réduire les oublis lors de la préparation.',
+      confidence: 'to_confirm',
+    },
+    feasibility: {
+      value: null,
+      justification: 'La disponibilité des règles structurées reste à vérifier.',
+      confidence: 'unknown',
+    },
+    prerequisites: [
+      {
+        prerequisite_id: 'prerequisite-validation-rule',
+        label: 'Formaliser la règle de validation',
+        status: 'missing',
+        impact: 'L’essai ne peut pas démarrer sans règle vérifiable.',
+        completion_criterion: 'La règle est documentée et approuvée par la Direction.',
+      },
+    ],
+    priority: {
+      level: 'medium',
+      rationale: 'Valeur attendue forte, démarrage bloqué par une donnée manquante.',
+      status: 'proposed',
+    },
+    human_owner: { role_id: 'role-direction', label: 'Direction' },
+    experiment: {
+      hypothesis: 'Une préparation sourcée réduit les oublis sans retirer la validation humaine.',
+      protocol: 'Tester sur trois dossiers synthétiques ou autorisés.',
+      success_criteria: [
+        'Chaque proposition cite son origine.',
+        'La Direction peut corriger avant toute restitution.',
+      ],
+    },
+  },
 });
 let vite: ViteDevServer | undefined;
 const production = process.env.NODE_ENV === 'production';
@@ -116,7 +173,7 @@ const server = createAppServer(
     res.end(req.method === 'HEAD' ? undefined : readFileSync(file));
   },
   demoSession,
-  { sources, sharing, enrichments, interviews, bpmn, reviews },
+  { sources, sharing, enrichments, interviews, bpmn, reviews, diagnostics },
 );
 if (!production) {
   const { createServer } = await import('vite');
@@ -130,6 +187,7 @@ async function shutdown() {
   await vite?.close();
   server.close(() => {
     interviews.close();
+    diagnostics.close();
     reviews.close();
     bpmn.close();
     enrichments.close();

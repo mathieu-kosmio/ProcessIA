@@ -1,6 +1,6 @@
 # ProcessIA · Suivi de développement
 
-Version 0.10.0, 11 septembre 2026. Développement local en cours, par tranches verticales TDD.
+Version 0.11.0, 11 septembre 2026. Développement local en cours, par tranches verticales TDD.
 
 | Tranche | Parcours principal | Résultat | État |
 | --- | --- | --- | --- |
@@ -13,7 +13,7 @@ Version 0.10.0, 11 septembre 2026. Développement local en cours, par tranches v
 | T007 | US03 | Ajouter la voix et les reprises | Socle local vérifié, intégration ouverte |
 | T008 | US04 | Compléter la navigation et le profil BPMN | Noyau local vérifié |
 | T009 | US05 | Assister et consolider les entretiens | Noyau obligatoire vérifié |
-| T010 | US06 | Produire un diagnostic et une feuille de route | Non commencé |
+| T010 | US06 | Produire un diagnostic et une feuille de route | Premier noyau vérifié |
 | T011 | US07 | Figer et exporter les résultats autorisés | Non commencé |
 | T012 | US03 | Éprouver qualité et pilote | Non commencé |
 
@@ -180,4 +180,23 @@ Premier comportement visé : sélectionner des passages de transcriptions privé
 
 Preuve : `docs/validation/T009.md`. Vérification consolidée : 54 tests de domaine, d'intégration et de contrat ainsi que 14 parcours Chromium réussis.
 
-Limites : la détection locale compare des formulations normalisées sélectionnées explicitement ; elle ne déduit pas encore que deux phrases sémantiquement proches décrivent la même règle. L'utilisateur ne peut pas encore qualifier l'écart comme correction, variante conditionnelle, évolution temporelle ou désaccord non résolu. Le plan d'entretiens, sa version partageable, les relances en direct et la propagation de l'écart dans le diagnostic restent à développer. Le rôle habilité à arbitrer doit encore être confirmé par la gouvernance du pilote.
+Limites : la détection locale compare des formulations normalisées sélectionnées explicitement ; elle ne déduit pas encore que deux phrases sémantiquement proches décrivent la même règle. L'utilisateur ne peut pas encore qualifier l'écart comme correction, variante conditionnelle, évolution temporelle ou désaccord non résolu. Le plan d'entretiens, sa version partageable et les relances en direct restent à développer. T010 réalise le premier lien de l'écart vers un diagnostic privé. Le rôle habilité à arbitrer doit encore être confirmé par la gouvernance du pilote.
+
+## T010 · Diagnostic et feuille de route
+
+Statut : premier comportement transversal FR-034 à FR-037 vérifié localement le 11 septembre 2026. La comparaison actuel/cible FR-033, l'édition et l'historique du diagnostic, les capacités mutualisées et le suivi des résultats restent à développer. DEC-07 bloque toujours la méthode de score et le format métier définitifs.
+
+Premier comportement visé : produire depuis une révision précise un diagnostic privé au périmètre limité, relier une opportunité à un constat et à une divergence, conserver une faisabilité inconnue, expliquer la priorité et ordonner le prérequis avant un essai à validation humaine.
+
+| Cycle | Exigences | Rouge observé | Résultat vérifié |
+| --- | --- | --- | --- |
+| Diagnostic circonscrit | FR-034, TC-034, C-03 | Le service de diagnostic était absent | Révision, tâches étudiées, limite de couverture, constat et divergence liée sont conservés |
+| Priorité explicable | FR-035, TC-035 | Une valeur absente n'avait aucune représentation publique | Faisabilité `null`, libellé Inconnue, score indisponible, prérequis bloquant et justification restent distincts |
+| Usage IA testable | FR-036, TC-036 | Aucun contrat ne reliait responsable humain, hypothèse et critères | Responsable, bénéficiaire, protocole et critères de réussite sont présents ; l'exécution reste `not_started` |
+| Feuille de route | FR-037, TC-037 | Aucun ordre d'action ne précédait l'essai | Le critère de sortie du prérequis est explicite et l'essai dépend de cette action |
+| Contrat HTTP | FR-034 à FR-037 | La route retournait 404 | Création et liste privées exposées avec schéma strict et idempotence |
+| Studio consultant | US06, FR-034 à FR-037 | Le bouton diagnostic était absent | Périmètre, constat, opportunité, valeurs, priorité et feuille de route sont visibles dans Chromium |
+
+Preuve : `docs/validation/T010.md`. Vérification consolidée : 57 tests de domaine, d'intégration et de contrat ainsi que 15 parcours Chromium réussis.
+
+Limites : ce noyau traite une opportunité synthétique reliée à une divergence ouverte. Il ne génère pas encore plusieurs options organisationnelles, d'automatisation et d'IA, ne compare pas un scénario actuel à une cible et ne permet pas la révision humaine de la priorité. Aucun score pondéré n'est calculé tant que DEC-07 reste ouvert. Les actions d'autonomie, les capacités mutualisées, la distinction entre gain hypothétique et mesure observée, la publication et l'export restent ouverts.

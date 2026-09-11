@@ -22,6 +22,8 @@ import type {
 import { BpmnPanel } from '../bpmn/BpmnPanel.tsx';
 import type { InterviewInvestigation } from '../../contracts/interview-review.ts';
 import { InterviewReviewPanel } from '../consultant/InterviewReviewPanel.tsx';
+import type { Diagnostic } from '../../contracts/diagnostic.ts';
+import { DiagnosticPanel } from '../diagnostic/DiagnosticPanel.tsx';
 
 const modelPath = (dossierId: string) => `/api/dossiers/${dossierId}/models/process-diagnostic`;
 const bpmnPath = (dossierId: string) => `${modelPath(dossierId)}/bpmn`;
@@ -149,6 +151,8 @@ export function Studio() {
   const [bpmnValidation, setBpmnValidation] = useState<BpmnValidation>();
   const [showReviews, setShowReviews] = useState(false);
   const [reviews, setReviews] = useState<InterviewInvestigation[]>([]);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [text, setText] = useState('');
   const [proposal, setProposal] = useState<Proposal>();
   const [busy, setBusy] = useState(false);
@@ -195,6 +199,8 @@ export function Studio() {
     setBpmnValidation(undefined);
     setShowReviews(false);
     setReviews([]);
+    setShowDiagnostics(false);
+    setDiagnostics([]);
     setProposal(undefined);
     stopMicrophone();
     setInterview(undefined);
@@ -262,6 +268,7 @@ export function Studio() {
       setBpmnValidation(validation);
       setShowBpmn(true);
       setShowReviews(false);
+      setShowDiagnostics(false);
       setShowHistory(false);
       setShowSharing(false);
       setSelected(undefined);
@@ -301,6 +308,25 @@ export function Studio() {
       );
       setReviews(result.items);
       setShowReviews(true);
+      setShowBpmn(false);
+      setShowDiagnostics(false);
+      setShowHistory(false);
+      setShowSharing(false);
+      setSelected(undefined);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function openDiagnostics() {
+    setBusy(true);
+    setError('');
+    try {
+      const result = await read<{ items: Diagnostic[] }>(`${modelPath(activeDossier)}/diagnostics`);
+      setDiagnostics(result.items);
+      setShowDiagnostics(true);
+      setShowReviews(false);
       setShowBpmn(false);
       setShowHistory(false);
       setShowSharing(false);
@@ -531,6 +557,18 @@ export function Studio() {
             <span className="private-badge">♧ Préparation privée</span>
             <button
               className="secondary"
+              onClick={showDiagnostics ? () => setShowDiagnostics(false) : openDiagnostics}
+              aria-pressed={showDiagnostics}
+              aria-label={
+                showDiagnostics
+                  ? 'Revenir à la carte'
+                  : 'Ouvrir le diagnostic et la feuille de route'
+              }
+            >
+              ◇ {showDiagnostics ? 'Carte métier' : 'Diagnostic'}
+            </button>
+            <button
+              className="secondary"
               onClick={showReviews ? () => setShowReviews(false) : openReviews}
               aria-pressed={showReviews}
               aria-label={
@@ -551,6 +589,7 @@ export function Studio() {
               className="secondary"
               onClick={() => {
                 setShowHistory(!showHistory);
+                setShowDiagnostics(false);
                 setShowReviews(false);
                 setShowBpmn(false);
                 setSelected(undefined);
@@ -564,6 +603,7 @@ export function Studio() {
               onClick={() => {
                 setShowSharing(!showSharing);
                 setShowHistory(false);
+                setShowDiagnostics(false);
                 setShowReviews(false);
                 setShowBpmn(false);
                 setSelected(undefined);
@@ -599,6 +639,8 @@ export function Studio() {
           <div className="loading" role="status">
             Ouverture du dossier…
           </div>
+        ) : showDiagnostics ? (
+          <DiagnosticPanel diagnostics={diagnostics} onClose={() => setShowDiagnostics(false)} />
         ) : showReviews ? (
           <InterviewReviewPanel investigations={reviews} onClose={() => setShowReviews(false)} />
         ) : showBpmn && bpmnDocument && bpmnValidation ? (

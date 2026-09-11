@@ -124,6 +124,8 @@ Routes locales :
 - `POST /api/dossiers/:dossier/models/:model/bpmn/commands` : applique une commande BPMN atomique liée à la révision courante.
 - `GET /api/dossiers/:dossier/models/:model/interview-reviews` : liste les investigations privées accessibles du modèle.
 - `POST /api/dossiers/:dossier/models/:model/interview-reviews/consolidate` : consolide des références de passages en conservant chaque assertion et sans résolution automatique.
+- `GET /api/dossiers/:dossier/models/:model/diagnostics` : liste les diagnostics privés accessibles du modèle.
+- `POST /api/dossiers/:dossier/models/:model/diagnostics` : crée un diagnostic privé rattaché à la révision courante, à un constat et à une investigation accessible.
 
 L'historique et la liste des dossiers ne sont pas encore paginés. HTTP local exige un Host `127.0.0.1:port` et une origine identique pour les POST. Codes HTTP : 403 accès, 409 concurrence, 422 commande invalide, 400 JSON invalide, 413 corps trop grand, 415 contenu autre que JSON. Les réponses de proposition utilisent leur statut métier.
 
@@ -171,3 +173,11 @@ Le contrat `src/contracts/interview-review.ts` décrit un sujet métier, des ré
 La consolidation exige au moins deux passages distincts de transcriptions privées. Deux formulations normalisées différentes créent une divergence. Toutes les occurrences restent présentes, avec titre et date de source. Le résultat conserve `resolution: null` et ne contient aucun identifiant d'assertion gagnante. La question proposée nomme le rôle fourni et conserve `target_person: null`.
 
 Les écritures utilisent une clé d'idempotence par dossier. Un rejeu identique retrouve l'investigation ; une autre charge avec la même clé échoue. Lecture et écriture relisent les droits du modèle et des sources privées. Cette surface ne qualifie pas encore une correction, une variante, une évolution temporelle ou un désaccord durable.
+
+## Diagnostic local et feuille de route exécutés par T010
+
+Le contrat `src/contracts/diagnostic.ts` décrit le périmètre, le constat, les critères de l'opportunité et les actions de feuille de route. Le service relit le modèle et l'investigation avec les droits courants avant toute création. Les tâches du périmètre doivent exister ; le constat reste dans ce périmètre et référence une divergence accessible.
+
+Une valeur ou une faisabilité absente conserve `value: null` et le libellé Inconnue. Le score reste nul avec une explication, car DEC-07 ne valide encore aucune méthode de pondération. La priorité est une proposition motivée distincte de la possibilité de démarrer. Un usage IA conserve un responsable humain, un protocole et au moins un critère de réussite. Son état d'exécution reste `not_started`.
+
+Chaque prérequis devient une action avec un critère de sortie. L'essai dépend de ces actions, son effort reste nul et porte le libellé À estimer. Cette surface ne lance aucun agent, outil métier ou conteneur. Elle ne couvre pas encore la comparaison actuel/cible, les modifications historisées, les capacités mutualisées, la publication ou l'export.

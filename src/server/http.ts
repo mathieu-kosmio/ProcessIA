@@ -13,6 +13,7 @@ import {
   InterviewReviewError,
   type InterviewReviewService,
 } from '../application/interview-review/service.ts';
+import { DiagnosticError, type DiagnosticService } from '../application/diagnostic/service.ts';
 import {
   createSharePreviewSchema,
   publishShareSchema,
@@ -171,6 +172,83 @@ const consolidateTestimoniesSchema = z
       .strict(),
   })
   .strict();
+const criterionAssessmentSchema = z
+  .object({
+    value: z.number().int().min(1).max(5).nullable(),
+    justification: z.string().trim().min(1).max(1000),
+    confidence: z.enum(['unknown', 'to_confirm', 'confirmed']),
+  })
+  .strict();
+const createDiagnosticSchema = z
+  .object({
+    idempotency_key: z.string().min(1).max(120),
+    scope: z
+      .object({
+        label: z.string().trim().min(1).max(240),
+        task_ids: z.array(z.string().min(1).max(120)).min(1).max(100),
+        coverage_limit: z.string().trim().min(1).max(1000),
+      })
+      .strict(),
+    finding: z
+      .object({
+        finding_id: z.string().min(1).max(120),
+        statement: z.string().trim().min(1).max(2000),
+        kind: z.enum([
+          'declared_fact',
+          'confirmed_fact',
+          'interpretation',
+          'hypothesis',
+          'missing_information',
+        ]),
+        task_ids: z.array(z.string().min(1).max(120)).min(1).max(100),
+        investigation_id: z.string().min(1).max(120),
+      })
+      .strict(),
+    opportunity: z
+      .object({
+        opportunity_id: z.string().min(1).max(120),
+        title: z.string().trim().min(1).max(240),
+        type: z.enum(['organization', 'automation', 'ai']),
+        beneficiary: z.string().trim().min(1).max(240),
+        expected_value: criterionAssessmentSchema,
+        feasibility: criterionAssessmentSchema,
+        prerequisites: z
+          .array(
+            z
+              .object({
+                prerequisite_id: z.string().min(1).max(120),
+                label: z.string().trim().min(1).max(240),
+                status: z.enum(['met', 'missing', 'unknown']),
+                impact: z.string().trim().min(1).max(1000),
+                completion_criterion: z.string().trim().min(1).max(1000),
+              })
+              .strict(),
+          )
+          .max(20),
+        priority: z
+          .object({
+            level: z.enum(['high', 'medium', 'low', 'unknown']),
+            rationale: z.string().trim().min(1).max(1000),
+            status: z.literal('proposed'),
+          })
+          .strict(),
+        human_owner: z
+          .object({
+            role_id: z.string().min(1).max(120),
+            label: z.string().trim().min(1).max(160),
+          })
+          .strict(),
+        experiment: z
+          .object({
+            hypothesis: z.string().trim().min(1).max(1000),
+            protocol: z.string().trim().min(1).max(2000),
+            success_criteria: z.array(z.string().trim().min(1).max(500)).min(1).max(20),
+          })
+          .strict(),
+      })
+      .strict(),
+  })
+  .strict();
 class HttpError extends Error {
   constructor(
     public status: number,
@@ -214,6 +292,7 @@ export function createAppServer(
     interviews?: InterviewService;
     bpmn?: BpmnService;
     reviews?: InterviewReviewService;
+    diagnostics?: DiagnosticService;
   } = {},
 ) {
   return createServer(async (req, res) => {
@@ -319,6 +398,30 @@ export function createAppServer(
           201,
           capabilities.reviews.consolidate(session, reviewsMatch[1], {
             model_id: reviewsMatch[2],
+            ...parsed.data,
+          }),
+        );
+        return;
+      }
+      const diagnosticsMatch = /^\/api\/dossiers\/([\w-]+)\/models\/([\w-]+)\/diagnostics$/.exec(
+        path,
+      );
+      if (req.method === 'GET' && diagnosticsMatch && capabilities.diagnostics) {
+        json(
+          res,
+          200,
+          capabilities.diagnostics.list(session, diagnosticsMatch[1], diagnosticsMatch[2]),
+        );
+        return;
+      }
+      if (req.method === 'POST' && diagnosticsMatch && capabilities.diagnostics) {
+        const parsed = createDiagnosticSchema.safeParse(await body(req));
+        if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+        json(
+          res,
+          201,
+          capabilities.diagnostics.create(session, diagnosticsMatch[1], {
+            model_id: diagnosticsMatch[2],
             ...parsed.data,
           }),
         );
@@ -545,26 +648,28 @@ export function createAppServer(
               ? 409
               : error instanceof InterviewReviewError && error.code === 'IDEMPOTENCY_CONFLICT'
                 ? 409
-                : error instanceof InterviewReviewError && error.code === 'NO_DIVERGENCE'
-                  ? 422
-                  : error instanceof InterviewError
-                    ? 400
-                    : error instanceof InterviewReviewError
+                : error instanceof DiagnosticError && error.code === 'IDEMPOTENCY_CONFLICT'
+                  ? 409
+                  : error instanceof InterviewReviewError && error.code === 'NO_DIVERGENCE'
+                    ? 422
+                    : error instanceof InterviewError
                       ? 400
-                      : error instanceof EnrichmentError
+                      : error instanceof InterviewReviewError || error instanceof DiagnosticError
                         ? 400
-                        : error instanceof SharingError &&
-                            [
-                              'IDEMPOTENCY_CONFLICT',
-                              'PREVIEW_INVALID',
-                              'VERSION_CONFLICT',
-                            ].includes(error.code)
-                          ? 409
-                          : error instanceof SourceError
-                            ? 400
-                            : error instanceof HttpError
-                              ? error.status
-                              : 500;
+                        : error instanceof EnrichmentError
+                          ? 400
+                          : error instanceof SharingError &&
+                              [
+                                'IDEMPOTENCY_CONFLICT',
+                                'PREVIEW_INVALID',
+                                'VERSION_CONFLICT',
+                              ].includes(error.code)
+                            ? 409
+                            : error instanceof SourceError
+                              ? 400
+                              : error instanceof HttpError
+                                ? error.status
+                                : 500;
       json(res, status, {
         code:
           error instanceof AccessDenied
@@ -573,7 +678,8 @@ export function createAppServer(
                 error instanceof SharingError ||
                 error instanceof EnrichmentError ||
                 error instanceof InterviewError ||
-                error instanceof InterviewReviewError
+                error instanceof InterviewReviewError ||
+                error instanceof DiagnosticError
               ? error.code
               : error instanceof HttpError
                 ? error.code
@@ -585,7 +691,8 @@ export function createAppServer(
                 error instanceof SharingError ||
                 error instanceof EnrichmentError ||
                 error instanceof InterviewError ||
-                error instanceof InterviewReviewError
+                error instanceof InterviewReviewError ||
+                error instanceof DiagnosticError
               ? error.message
               : 'La demande a échoué. Vos modifications déjà enregistrées sont conservées.',
       });
