@@ -140,6 +140,45 @@ const demoDiagnostic = diagnostics.create(demoSession, 'demo-kosmio', {
     },
   },
 });
+let currentDemoDiagnostic = diagnostics
+  .list(demoSession, 'demo-kosmio', 'process-diagnostic')
+  .items.find((item) => item.diagnostic_id === demoDiagnostic.diagnostic_id);
+if (!currentDemoDiagnostic)
+  throw new Error('Le diagnostic synthétique est indisponible après sa création.');
+if (currentDemoDiagnostic.estimated_gain.status === 'unknown') {
+  currentDemoDiagnostic = diagnostics.defineGainHypothesis(
+    demoSession,
+    'demo-kosmio',
+    'process-diagnostic',
+    currentDemoDiagnostic.diagnostic_id,
+    'opportunity-assisted-review',
+    {
+      idempotency_key: 'demo-gain-hypothesis-v1',
+      base_version: currentDemoDiagnostic.version,
+      value: 30,
+      unit: 'minutes par dossier',
+      method: 'Estimation issue d’un atelier sur trois dossiers synthétiques.',
+      estimated_at: '2026-09-01',
+    },
+  );
+}
+if (currentDemoDiagnostic.observed_gains.length === 0) {
+  currentDemoDiagnostic = diagnostics.recordGainMeasurement(
+    demoSession,
+    'demo-kosmio',
+    'process-diagnostic',
+    currentDemoDiagnostic.diagnostic_id,
+    'opportunity-assisted-review',
+    {
+      idempotency_key: 'demo-gain-measurement-v1',
+      base_version: currentDemoDiagnostic.version,
+      value: 24,
+      unit: 'minutes par dossier',
+      method: 'Moyenne chronométrée sur trois dossiers synthétiques.',
+      measured_at: '2026-09-10',
+    },
+  );
+}
 if (capabilityMaps.list(demoSession, 'demo-kosmio', 'process-diagnostic').items.length === 0) {
   capabilityMaps.create(demoSession, 'demo-kosmio', {
     idempotency_key: 'demo-capability-quote-extraction-v1',

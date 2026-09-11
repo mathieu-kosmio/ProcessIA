@@ -81,6 +81,47 @@ export type RevisePriorityInput = {
   justification: string;
 };
 
+export type DefineGainHypothesisInput = {
+  idempotency_key: string;
+  base_version: number;
+  value: number;
+  unit: string;
+  method: string;
+  estimated_at: string;
+};
+
+export type RecordGainMeasurementInput = {
+  idempotency_key: string;
+  base_version: number;
+  value: number;
+  unit: string;
+  method: string;
+  measured_at: string;
+};
+
+export type GainHypothesis = {
+  status: 'hypothesis';
+  opportunity_id: string;
+  value: number;
+  unit: string;
+  label: 'Hypothèse initiale';
+  method: string;
+  estimated_at: string;
+  author: string;
+  recorded_at: string;
+};
+
+export type ObservedGain = {
+  measurement_id: string;
+  opportunity_id: string;
+  value: number;
+  unit: string;
+  method: string;
+  measured_at: string;
+  author: string;
+  recorded_at: string;
+};
+
 export type PriorityHistoryEntry = {
   revision_id: string;
   diagnostic_version: number;
@@ -116,11 +157,14 @@ export type Diagnostic = {
   findings: DiagnosticFindingInput[];
   opportunities: DiagnosticOpportunity[];
   roadmap: { actions: RoadmapAction[] };
-  estimated_gain: {
-    status: 'unknown';
-    value: null;
-    label: 'À mesurer';
-  };
+  estimated_gain:
+    | {
+        status: 'unknown';
+        value: null;
+        label: 'À mesurer';
+      }
+    | GainHypothesis;
+  observed_gains: ObservedGain[];
   priority_history: PriorityHistoryEntry[];
   created_at: string;
 };

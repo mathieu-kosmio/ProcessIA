@@ -127,6 +127,8 @@ Routes locales :
 - `GET /api/dossiers/:dossier/models/:model/diagnostics` : liste les diagnostics privés accessibles du modèle.
 - `POST /api/dossiers/:dossier/models/:model/diagnostics` : crée un diagnostic privé rattaché à la révision courante, à un constat et à une investigation accessible.
 - `POST /api/dossiers/:dossier/models/:model/diagnostics/:diagnostic/opportunities/:opportunity/priority` : révise une priorité avec version de base et justification ; l'auteur provient de la session.
+- `POST /api/dossiers/:dossier/models/:model/diagnostics/:diagnostic/opportunities/:opportunity/gain-hypothesis` : enregistre une hypothèse initiale datée avec son unité et sa méthode.
+- `POST /api/dossiers/:dossier/models/:model/diagnostics/:diagnostic/opportunities/:opportunity/gain-measurements` : ajoute une mesure observée sans remplacer l'hypothèse.
 - `GET /api/dossiers/:dossier/models/:model/capabilities` : liste les architectures conceptuelles accessibles du diagnostic.
 - `POST /api/dossiers/:dossier/models/:model/capabilities` : relie une capacité à au moins deux usages dont les contextes, tâches et périmètres restent distincts.
 
@@ -184,6 +186,8 @@ Le contrat `src/contracts/diagnostic.ts` décrit le périmètre, le constat, les
 Une valeur ou une faisabilité absente conserve `value: null` et le libellé Inconnue. Le score reste nul avec une explication, car DEC-07 ne valide encore aucune méthode de pondération. La priorité est une proposition motivée distincte de la possibilité de démarrer. Un usage IA conserve un responsable humain, un protocole et au moins un critère de réussite. Son état d'exécution reste `not_started`.
 
 Le diagnostic possède une version propre. Une révision manuelle de priorité exige une version de base, une nouvelle valeur et une justification. Elle crée une nouvelle version et ajoute une entrée d'historique avec valeur précédente, nouvelle valeur, auteur issu de la session, rôle applicatif et date. Un rejeu identique reste stable ; une version obsolète retourne un conflit. Le client ne peut pas choisir l'auteur dans sa charge utile.
+
+Le suivi du gain utilise la même version optimiste. L'hypothèse initiale contient valeur, unité, méthode, date d'estimation, auteur et date d'enregistrement. Une mesure contient sa propre valeur, méthode, date, auteur et identifiant. Elle exige une hypothèse antérieure sur la même opportunité, la même unité et une date égale ou postérieure. L'ajout conserve l'hypothèse et les mesures précédentes. Une unité différente est refusée sans mutation ; aucune conversion ou causalité n'est déduite.
 
 Chaque prérequis devient une action avec un critère de sortie. L'essai dépend de ces actions, son effort reste nul et porte le libellé À estimer. Cette surface ne lance aucun agent, outil métier ou conteneur.
 

@@ -265,6 +265,21 @@ const revisePrioritySchema = z
     justification: z.string().trim().min(1).max(1000),
   })
   .strict();
+const gainEvidenceSchema = z
+  .object({
+    idempotency_key: z.string().min(1).max(120),
+    base_version: z.number().int().positive(),
+    value: z.number().nonnegative(),
+    unit: z.string().trim().min(1).max(120),
+    method: z.string().trim().min(1).max(1000),
+  })
+  .strict();
+const defineGainHypothesisSchema = gainEvidenceSchema.extend({
+  estimated_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+const recordGainMeasurementSchema = gainEvidenceSchema.extend({
+  measured_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
 const createTargetScenarioSchema = z
   .object({
     idempotency_key: z.string().min(1).max(120),
@@ -516,6 +531,44 @@ export function createAppServer(
             diagnosticPriorityMatch[2],
             diagnosticPriorityMatch[3],
             diagnosticPriorityMatch[4],
+            parsed.data,
+          ),
+        );
+        return;
+      }
+      const diagnosticGainMatch =
+        /^\/api\/dossiers\/([\w-]+)\/models\/([\w-]+)\/diagnostics\/([\w-]+)\/opportunities\/([\w-]+)\/(gain-hypothesis|gain-measurements)$/.exec(
+          path,
+        );
+      if (req.method === 'POST' && diagnosticGainMatch && capabilities.diagnostics) {
+        if (diagnosticGainMatch[5] === 'gain-hypothesis') {
+          const parsed = defineGainHypothesisSchema.safeParse(await body(req));
+          if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+          json(
+            res,
+            200,
+            capabilities.diagnostics.defineGainHypothesis(
+              session,
+              diagnosticGainMatch[1],
+              diagnosticGainMatch[2],
+              diagnosticGainMatch[3],
+              diagnosticGainMatch[4],
+              parsed.data,
+            ),
+          );
+          return;
+        }
+        const parsed = recordGainMeasurementSchema.safeParse(await body(req));
+        if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+        json(
+          res,
+          200,
+          capabilities.diagnostics.recordGainMeasurement(
+            session,
+            diagnosticGainMatch[1],
+            diagnosticGainMatch[2],
+            diagnosticGainMatch[3],
+            diagnosticGainMatch[4],
             parsed.data,
           ),
         );

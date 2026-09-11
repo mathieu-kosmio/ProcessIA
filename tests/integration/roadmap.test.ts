@@ -164,6 +164,96 @@ test('T010 / TC-034 à TC-037 : une opportunité traçable devient un essai ordo
   assert.equal(replay.diagnostic_id, result.diagnostic_id);
   assert.equal(diagnostics.list(demoSession, 'demo-kosmio', 'process-diagnostic').items.length, 1);
 
+  const withHypothesis = diagnostics.defineGainHypothesis(
+    demoSession,
+    'demo-kosmio',
+    'process-diagnostic',
+    result.diagnostic_id,
+    'opportunity-assisted-review',
+    {
+      idempotency_key: 'diagnostic-gain-hypothesis-v1',
+      base_version: result.version,
+      value: 30,
+      unit: 'minutes par dossier',
+      method: 'Estimation issue d’un atelier sur trois dossiers synthétiques.',
+      estimated_at: '2026-09-01',
+    },
+  );
+  assert.equal(withHypothesis.version, 2);
+  assert.equal(withHypothesis.estimated_gain.status, 'hypothesis');
+  assert.equal(withHypothesis.estimated_gain.value, 30);
+  assert.equal(withHypothesis.estimated_gain.unit, 'minutes par dossier');
+  assert.equal(withHypothesis.estimated_gain.author, demoSession.user_id);
+  assert.deepEqual(withHypothesis.observed_gains, []);
+
+  const withMeasurement = diagnostics.recordGainMeasurement(
+    demoSession,
+    'demo-kosmio',
+    'process-diagnostic',
+    result.diagnostic_id,
+    'opportunity-assisted-review',
+    {
+      idempotency_key: 'diagnostic-gain-measurement-v1',
+      base_version: withHypothesis.version,
+      value: 24,
+      unit: 'minutes par dossier',
+      method: 'Moyenne chronométrée sur trois dossiers synthétiques.',
+      measured_at: '2026-09-10',
+    },
+  );
+  assert.equal(withMeasurement.version, 3);
+  assert.deepEqual(withMeasurement.estimated_gain, withHypothesis.estimated_gain);
+  assert.equal(withMeasurement.observed_gains.length, 1);
+  assert.equal(withMeasurement.observed_gains[0].value, 24);
+  assert.equal(
+    withMeasurement.observed_gains[0].method,
+    'Moyenne chronométrée sur trois dossiers synthétiques.',
+  );
+  assert.equal(withMeasurement.observed_gains[0].author, demoSession.user_id);
+  assert.equal(Number.isNaN(Date.parse(withMeasurement.observed_gains[0].measured_at)), false);
+  const measurementReplay = diagnostics.recordGainMeasurement(
+    demoSession,
+    'demo-kosmio',
+    'process-diagnostic',
+    result.diagnostic_id,
+    'opportunity-assisted-review',
+    {
+      idempotency_key: 'diagnostic-gain-measurement-v1',
+      base_version: withHypothesis.version,
+      value: 24,
+      unit: 'minutes par dossier',
+      method: 'Moyenne chronométrée sur trois dossiers synthétiques.',
+      measured_at: '2026-09-10',
+    },
+  );
+  assert.equal(
+    measurementReplay.observed_gains[0].measurement_id,
+    withMeasurement.observed_gains[0].measurement_id,
+  );
+  assert.throws(
+    () =>
+      diagnostics.recordGainMeasurement(
+        demoSession,
+        'demo-kosmio',
+        'process-diagnostic',
+        result.diagnostic_id,
+        'opportunity-assisted-review',
+        {
+          idempotency_key: 'diagnostic-gain-measurement-invalid-unit',
+          base_version: withMeasurement.version,
+          value: 0.4,
+          unit: 'heures par dossier',
+          method: 'Conversion non autorisée sans méthode commune.',
+          measured_at: '2026-09-10',
+        },
+      ),
+    /même unité/i,
+  );
+  assert.equal(
+    diagnostics.list(demoSession, 'demo-kosmio', 'process-diagnostic').items[0].version,
+    withMeasurement.version,
+  );
+
   const revised = diagnostics.revisePriority(
     demoSession,
     'demo-kosmio',
@@ -172,12 +262,12 @@ test('T010 / TC-034 à TC-037 : une opportunité traçable devient un essai ordo
     'opportunity-assisted-review',
     {
       idempotency_key: 'diagnostic-priority-high-v1',
-      base_version: result.version,
+      base_version: withMeasurement.version,
       level: 'high',
       justification: 'La Direction souhaite préparer cet essai dès que le prérequis est levé.',
     },
   );
-  assert.equal(revised.version, 2);
+  assert.equal(revised.version, 4);
   assert.equal(revised.opportunities[0].priority.level, 'high');
   assert.equal(revised.opportunities[0].priority.status, 'manual');
   assert.equal(revised.priority_history.length, 1);
@@ -195,7 +285,7 @@ test('T010 / TC-034 à TC-037 : une opportunité traçable devient un essai ordo
     'opportunity-assisted-review',
     {
       idempotency_key: 'diagnostic-priority-high-v1',
-      base_version: result.version,
+      base_version: withMeasurement.version,
       level: 'high',
       justification: 'La Direction souhaite préparer cet essai dès que le prérequis est levé.',
     },
@@ -219,6 +309,25 @@ test('T010 / TC-034 à TC-037 : une opportunité traçable devient un essai ordo
     /diagnostic a changé/i,
   );
   const outsider = { user_id: 'outsider', application_role: 'consultant' as const, grants: [] };
+  assert.throws(
+    () =>
+      diagnostics.recordGainMeasurement(
+        outsider,
+        'demo-kosmio',
+        'process-diagnostic',
+        result.diagnostic_id,
+        'opportunity-assisted-review',
+        {
+          idempotency_key: 'diagnostic-gain-measurement-outsider',
+          base_version: revised.version,
+          value: 22,
+          unit: 'minutes par dossier',
+          method: 'Tentative hors du dossier privé.',
+          measured_at: '2026-09-11',
+        },
+      ),
+    /ACCESS_DENIED/,
+  );
   assert.throws(
     () =>
       diagnostics.revisePriority(

@@ -28,6 +28,29 @@ test('T010 : relier un constat, une opportunité et un essai sans valeur invent�
   await expect(page.getByText('Responsable : Direction', { exact: true })).toBeVisible();
   await expect(page.getByText('À estimer', { exact: true })).toHaveCount(2);
   await expect(page.getByText('Aucun agent démarré', { exact: true })).toBeVisible();
+  const gainEvidence = page.getByRole('region', {
+    name: 'Suivi du gain Préparer une restitution assistée et sourcée',
+  });
+  await expect(
+    gainEvidence.getByRole('heading', { name: 'Hypothèse et résultat d’essai' }),
+  ).toBeVisible();
+  await expect(gainEvidence.getByText('30 minutes par dossier', { exact: true })).toBeVisible();
+  await expect(gainEvidence.getByText('24 minutes par dossier', { exact: true })).toBeVisible();
+  await expect(
+    gainEvidence.getByText('Estimation issue d’un atelier sur trois dossiers synthétiques.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    gainEvidence.getByText('Moyenne chronométrée sur trois dossiers synthétiques.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    gainEvidence.getByText('L’hypothèse initiale reste distincte du résultat observé.', {
+      exact: true,
+    }),
+  ).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Scénario cible : Restitution assistée' }),
   ).toBeVisible();
@@ -62,7 +85,7 @@ test('T010 : relier un constat, une opportunité et un essai sans valeur invent�
 
   await expect(page.getByText('Priorité manuelle', { exact: true })).toBeVisible();
   await expect(page.getByText('Haute', { exact: true })).toBeVisible();
-  await expect(page.getByText(/diagnostic v2/)).toBeVisible();
+  await expect(page.getByText(/diagnostic v4/)).toBeVisible();
   const priorityHistory = page.getByRole('region', { name: 'Historique des priorités' });
   await expect(
     priorityHistory.getByRole('heading', { name: 'Historique des priorités' }),

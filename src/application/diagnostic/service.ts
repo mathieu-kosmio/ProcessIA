@@ -4,8 +4,10 @@ import type { Session } from '../../contracts/model.ts';
 import type {
   CreateDiagnosticInput,
   CriterionAssessment,
+  DefineGainHypothesisInput,
   Diagnostic,
   DiagnosticPriority,
+  RecordGainMeasurementInput,
   RevisePriorityInput,
   RoadmapAction,
 } from '../../contracts/diagnostic.ts';
@@ -19,6 +21,7 @@ export class DiagnosticError extends Error {
       | 'INVALID_FINDING'
       | 'INVALID_OPPORTUNITY'
       | 'INVALID_PRIORITY'
+      | 'INVALID_GAIN'
       | 'DIAGNOSTIC_NOT_FOUND'
       | 'DIAGNOSTIC_CONFLICT'
       | 'IDEMPOTENCY_CONFLICT',
@@ -178,6 +181,7 @@ export class DiagnosticService {
           ],
         },
         estimated_gain: { status: 'unknown', value: null, label: 'À mesurer' },
+        observed_gains: [],
         priority_history: [],
         created_at: new Date().toISOString(),
       };
@@ -301,6 +305,154 @@ export class DiagnosticService {
     }
   }
 
+  defineGainHypothesis(
+    session: Session,
+    dossierId: string,
+    modelId: string,
+    diagnosticId: string,
+    opportunityId: string,
+    input: DefineGainHypothesisInput,
+  ): Diagnostic {
+    this.models.getModel(session, dossierId, modelId, true);
+    const payloadHash = hash({
+      operation: 'define_gain_hypothesis',
+      dossier_id: dossierId,
+      model_id: modelId,
+      diagnostic_id: diagnosticId,
+      opportunity_id: opportunityId,
+      ...input,
+    });
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const previous = this.command(dossierId, input.idempotency_key);
+      if (previous) {
+        this.assertReplay(previous, session, payloadHash);
+        const result = normalizeDiagnostic(JSON.parse(previous.result) as Diagnostic);
+        this.db.exec('COMMIT');
+        return result;
+      }
+      const diagnostic = this.read(dossierId, modelId, diagnosticId);
+      this.assertDiagnosticVersion(diagnostic, input.base_version);
+      this.assertOpportunity(diagnostic, opportunityId);
+      if (diagnostic.estimated_gain.status !== 'unknown')
+        throw new DiagnosticError(
+          'INVALID_GAIN',
+          'L’hypothèse initiale existe déjà et reste conservée.',
+        );
+      validateGain(input.value, input.unit, input.method, input.estimated_at);
+      const recordedAt = new Date().toISOString();
+      const result: Diagnostic = {
+        ...diagnostic,
+        version: diagnostic.version + 1,
+        estimated_gain: {
+          status: 'hypothesis',
+          opportunity_id: opportunityId,
+          value: input.value,
+          unit: input.unit.trim(),
+          label: 'Hypothèse initiale',
+          method: input.method.trim(),
+          estimated_at: input.estimated_at,
+          author: session.user_id,
+          recorded_at: recordedAt,
+        },
+      };
+      this.persistMutation(
+        dossierId,
+        modelId,
+        diagnosticId,
+        input.idempotency_key,
+        session,
+        payloadHash,
+        result,
+      );
+      this.db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
+  recordGainMeasurement(
+    session: Session,
+    dossierId: string,
+    modelId: string,
+    diagnosticId: string,
+    opportunityId: string,
+    input: RecordGainMeasurementInput,
+  ): Diagnostic {
+    this.models.getModel(session, dossierId, modelId, true);
+    const payloadHash = hash({
+      operation: 'record_gain_measurement',
+      dossier_id: dossierId,
+      model_id: modelId,
+      diagnostic_id: diagnosticId,
+      opportunity_id: opportunityId,
+      ...input,
+    });
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const previous = this.command(dossierId, input.idempotency_key);
+      if (previous) {
+        this.assertReplay(previous, session, payloadHash);
+        const result = normalizeDiagnostic(JSON.parse(previous.result) as Diagnostic);
+        this.db.exec('COMMIT');
+        return result;
+      }
+      const diagnostic = this.read(dossierId, modelId, diagnosticId);
+      this.assertDiagnosticVersion(diagnostic, input.base_version);
+      this.assertOpportunity(diagnostic, opportunityId);
+      validateGain(input.value, input.unit, input.method, input.measured_at);
+      const hypothesis = diagnostic.estimated_gain;
+      if (
+        hypothesis.status !== 'hypothesis' ||
+        hypothesis.opportunity_id !== opportunityId ||
+        hypothesis.unit !== input.unit.trim()
+      )
+        throw new DiagnosticError(
+          'INVALID_GAIN',
+          'La mesure exige une hypothèse antérieure exprimée dans la même unité.',
+        );
+      if (input.measured_at < hypothesis.estimated_at)
+        throw new DiagnosticError(
+          'INVALID_GAIN',
+          'La mesure observée doit être datée après l’hypothèse initiale.',
+        );
+      const recordedAt = new Date().toISOString();
+      const result: Diagnostic = {
+        ...diagnostic,
+        version: diagnostic.version + 1,
+        observed_gains: [
+          ...diagnostic.observed_gains,
+          {
+            measurement_id: randomUUID(),
+            opportunity_id: opportunityId,
+            value: input.value,
+            unit: input.unit.trim(),
+            method: input.method.trim(),
+            measured_at: input.measured_at,
+            author: session.user_id,
+            recorded_at: recordedAt,
+          },
+        ],
+      };
+      this.persistMutation(
+        dossierId,
+        modelId,
+        diagnosticId,
+        input.idempotency_key,
+        session,
+        payloadHash,
+        result,
+      );
+      this.db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   list(session: Session, dossierId: string, modelId: string): { items: Diagnostic[] } {
     this.models.getModel(session, dossierId, modelId);
     this.reviews.list(session, dossierId, modelId);
@@ -348,6 +500,36 @@ export class DiagnosticService {
         'Cette clé correspond déjà à une autre modification du diagnostic.',
       );
   }
+
+  private assertDiagnosticVersion(diagnostic: Diagnostic, baseVersion: number) {
+    if (diagnostic.version !== baseVersion)
+      throw new DiagnosticError(
+        'DIAGNOSTIC_CONFLICT',
+        'Le diagnostic a changé. Rechargez-le avant de consigner le gain.',
+      );
+  }
+
+  private assertOpportunity(diagnostic: Diagnostic, opportunityId: string) {
+    if (!diagnostic.opportunities.some((item) => item.opportunity_id === opportunityId))
+      throw new DiagnosticError('INVALID_GAIN', 'Le gain doit cibler une opportunité existante.');
+  }
+
+  private persistMutation(
+    dossierId: string,
+    modelId: string,
+    diagnosticId: string,
+    idempotencyKey: string,
+    session: Session,
+    payloadHash: string,
+    result: Diagnostic,
+  ) {
+    this.db
+      .prepare('UPDATE diagnostics SET data=? WHERE dossier_id=? AND model_id=? AND id=?')
+      .run(JSON.stringify(result), dossierId, modelId, diagnosticId);
+    this.db
+      .prepare('INSERT INTO diagnostic_commands VALUES (?, ?, ?, ?, ?)')
+      .run(dossierId, idempotencyKey, session.user_id, payloadHash, JSON.stringify(result));
+  }
 }
 
 function validateAssessment(input: { value: number | null; confidence: string }) {
@@ -377,10 +559,24 @@ function hash(value: unknown) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
+function validateGain(value: number, unit: string, method: string, date: string) {
+  const parsedDate = new Date(`${date}T00:00:00.000Z`);
+  const validDate =
+    /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+    !Number.isNaN(parsedDate.getTime()) &&
+    parsedDate.toISOString().slice(0, 10) === date;
+  if (!Number.isFinite(value) || value < 0 || !unit.trim() || !method.trim() || !validDate)
+    throw new DiagnosticError(
+      'INVALID_GAIN',
+      'Le gain exige une valeur positive ou nulle, une unité, une méthode et une date valides.',
+    );
+}
+
 function normalizeDiagnostic(diagnostic: Diagnostic): Diagnostic {
   return {
     ...diagnostic,
     version: diagnostic.version ?? 1,
     priority_history: diagnostic.priority_history ?? [],
+    observed_gains: diagnostic.observed_gains ?? [],
   };
 }

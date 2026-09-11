@@ -127,20 +127,71 @@ test('T010 / HTTP : générer puis relire un diagnostic et sa feuille de route',
   assert.equal(list.status, 200);
   assert.equal((await list.json()).items[0].diagnostic_id, diagnostic.diagnostic_id);
 
+  const opportunityRoute = `${route}/${diagnostic.diagnostic_id}/opportunities/opportunity-assisted-review`;
+  const hypothesisResponse = await fetch(`${opportunityRoute}/gain-hypothesis`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: base },
+    body: JSON.stringify({
+      idempotency_key: 'diagnostic-http-gain-hypothesis-v1',
+      base_version: 1,
+      value: 30,
+      unit: 'minutes par dossier',
+      method: 'Estimation issue d’un atelier sur trois dossiers synthétiques.',
+      estimated_at: '2026-09-01',
+    }),
+  });
+  assert.equal(hypothesisResponse.status, 200);
+  const withHypothesis = await hypothesisResponse.json();
+  assert.equal(withHypothesis.estimated_gain.status, 'hypothesis');
+  assert.equal(withHypothesis.estimated_gain.author, demoSession.user_id);
+
+  const measurementResponse = await fetch(`${opportunityRoute}/gain-measurements`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: base },
+    body: JSON.stringify({
+      idempotency_key: 'diagnostic-http-gain-measurement-v1',
+      base_version: 2,
+      value: 24,
+      unit: 'minutes par dossier',
+      method: 'Moyenne chronométrée sur trois dossiers synthétiques.',
+      measured_at: '2026-09-10',
+    }),
+  });
+  assert.equal(measurementResponse.status, 200);
+  const withMeasurement = await measurementResponse.json();
+  assert.equal(withMeasurement.estimated_gain.value, 30);
+  assert.equal(withMeasurement.observed_gains[0].value, 24);
+  assert.equal(withMeasurement.observed_gains[0].author, demoSession.user_id);
+
+  const malformedMeasurement = await fetch(`${opportunityRoute}/gain-measurements`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: base },
+    body: JSON.stringify({
+      idempotency_key: 'diagnostic-http-gain-measurement-invalid',
+      base_version: 3,
+      value: 22,
+      unit: 'minutes par dossier',
+      method: 'Mesure externe non autorisée.',
+      measured_at: '2026-09-11',
+      author: 'admin',
+    }),
+  });
+  assert.equal(malformedMeasurement.status, 400);
+
   const priorityRoute = `${route}/${diagnostic.diagnostic_id}/opportunities/opportunity-assisted-review/priority`;
   const priorityResponse = await fetch(priorityRoute, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: base },
     body: JSON.stringify({
       idempotency_key: 'diagnostic-http-priority-high-v1',
-      base_version: 1,
+      base_version: 3,
       level: 'high',
       justification: 'La Direction souhaite préparer cet essai dès la levée du prérequis.',
     }),
   });
   assert.equal(priorityResponse.status, 200);
   const revised = await priorityResponse.json();
-  assert.equal(revised.version, 2);
+  assert.equal(revised.version, 4);
   assert.equal(revised.opportunities[0].priority.status, 'manual');
   assert.equal(revised.priority_history[0].actor, demoSession.user_id);
 
@@ -149,7 +200,7 @@ test('T010 / HTTP : générer puis relire un diagnostic et sa feuille de route',
     headers: { 'Content-Type': 'application/json', Origin: base },
     body: JSON.stringify({
       idempotency_key: 'diagnostic-http-priority-invalid',
-      base_version: 2,
+      base_version: 4,
       level: 'low',
       justification: 'Décision externe non autorisée.',
       actor: 'admin',

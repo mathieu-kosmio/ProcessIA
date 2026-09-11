@@ -27,6 +27,15 @@ const priorityLabels = {
   unknown: 'Inconnue',
 } as const;
 
+function frenchDate(value: string) {
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${value}T00:00:00.000Z`));
+}
+
 export function DiagnosticPanel({
   diagnostics,
   targets,
@@ -147,10 +156,67 @@ export function DiagnosticPanel({
                     </div>
                     <div>
                       <span>GAIN ESTIMÉ</span>
-                      <strong>{diagnostic.estimated_gain.label}</strong>
-                      <p>Aucune mesure de temps collectée.</p>
+                      <strong>
+                        {diagnostic.estimated_gain.status === 'hypothesis'
+                          ? `${diagnostic.estimated_gain.value} ${diagnostic.estimated_gain.unit}`
+                          : diagnostic.estimated_gain.label}
+                      </strong>
+                      <p>
+                        {diagnostic.estimated_gain.status === 'hypothesis'
+                          ? 'Hypothèse initiale, à comparer après l’essai.'
+                          : 'Aucune mesure de temps collectée.'}
+                      </p>
                     </div>
                   </div>
+
+                  {diagnostic.estimated_gain.status === 'hypothesis' &&
+                    diagnostic.estimated_gain.opportunity_id === opportunity.opportunity_id && (
+                      <section
+                        className="gain-evidence"
+                        aria-label={`Suivi du gain ${opportunity.title}`}
+                      >
+                        <header>
+                          <div>
+                            <span className="diagnostic-kicker">SUIVI DE L’ESSAI</span>
+                            <h4>Hypothèse et résultat d’essai</h4>
+                          </div>
+                          <span className="gain-evidence-state">Données synthétiques</span>
+                        </header>
+                        <div className="gain-evidence-values">
+                          <article className="gain-hypothesis">
+                            <span>HYPOTHÈSE INITIALE</span>
+                            <strong>
+                              {diagnostic.estimated_gain.value} {diagnostic.estimated_gain.unit}
+                            </strong>
+                            <p>{diagnostic.estimated_gain.method}</p>
+                            <small>
+                              Estimée le {frenchDate(diagnostic.estimated_gain.estimated_at)} ·{' '}
+                              {diagnostic.estimated_gain.author}
+                            </small>
+                          </article>
+                          {diagnostic.observed_gains
+                            .filter(
+                              (measurement) =>
+                                measurement.opportunity_id === opportunity.opportunity_id,
+                            )
+                            .slice(-1)
+                            .map((measurement) => (
+                              <article className="gain-observed" key={measurement.measurement_id}>
+                                <span>RÉSULTAT OBSERVÉ</span>
+                                <strong>
+                                  {measurement.value} {measurement.unit}
+                                </strong>
+                                <p>{measurement.method}</p>
+                                <small>
+                                  Mesuré le {frenchDate(measurement.measured_at)} ·{' '}
+                                  {measurement.author}
+                                </small>
+                              </article>
+                            ))}
+                        </div>
+                        <footer>L’hypothèse initiale reste distincte du résultat observé.</footer>
+                      </section>
+                    )}
 
                   <div className="priority-rationale">
                     <strong>{opportunity.score_explanation}</strong>
