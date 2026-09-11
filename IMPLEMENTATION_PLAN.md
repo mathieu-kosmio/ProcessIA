@@ -1,6 +1,6 @@
 # ProcessIA · Suivi de développement
 
-Version 0.9.0, 11 septembre 2026. Développement local en cours, par tranches verticales TDD.
+Version 0.10.0, 11 septembre 2026. Développement local en cours, par tranches verticales TDD.
 
 | Tranche | Parcours principal | Résultat | État |
 | --- | --- | --- | --- |
@@ -12,7 +12,7 @@ Version 0.9.0, 11 septembre 2026. Développement local en cours, par tranches ve
 | T006 | US03 | Relier dialogue écrit, sélection et commandes | Vérifié localement |
 | T007 | US03 | Ajouter la voix et les reprises | Socle local vérifié, intégration ouverte |
 | T008 | US04 | Compléter la navigation et le profil BPMN | Noyau local vérifié |
-| T009 | US05 | Assister et consolider les entretiens | Non commencé |
+| T009 | US05 | Assister et consolider les entretiens | Noyau obligatoire vérifié |
 | T010 | US06 | Produire un diagnostic et une feuille de route | Non commencé |
 | T011 | US07 | Figer et exporter les résultats autorisés | Non commencé |
 | T012 | US03 | Éprouver qualité et pilote | Non commencé |
@@ -163,3 +163,21 @@ Premier comportement visé : ouvrir la vue BPMN depuis le studio, naviguer dans 
 Preuve : `docs/validation/T008.md`. Vérification consolidée : 50 tests de domaine, d'intégration et de contrat ainsi que 13 parcours Chromium réussis.
 
 Limites : la vue relie un document BPMN détaillé au modèle courant par `model_id`, mais elle ne synchronise pas encore toutes les éditions entre le graphe de tâches React Flow et le document BPMN. La palette visuelle d'ajout, le déplacement entre couloirs, la carte macro de chaîne de valeur, l'import XML, l'export et l'aller-retour de fidélité restent à développer. Le profil détaillé est une proposition de conception conforme à la spécification actuelle ; il ne déclenche aucune exécution de serviceTask.
+
+## T009 · Consolidation des témoignages
+
+Statut : noyau obligatoire FR-032 vérifié localement le 11 septembre 2026. La planification complète FR-030 et les recommandations avancées FR-031 restent des compléments SHOULD. Révision Git : jalon T009 documenté dans l'historique du dépôt.
+
+Premier comportement visé : sélectionner des passages de transcriptions privées portant sur la même propriété, conserver chaque assertion et sa provenance, ouvrir une divergence sans vote majoritaire et proposer une question ciblée sur un rôle sans inventer de personne.
+
+| Cycle | Exigences | Rouge observé | Résultat vérifié |
+| --- | --- | --- | --- |
+| Assertions et divergence | FR-032, TC-032 | Le service de consolidation était absent | Trois assertions issues de trois sources restent distinctes ; deux répétitions ne résolvent pas la contradiction |
+| Provenance et accès | FR-032, C-03, C-05 | Aucun lien contrôlé ne reliait l'écart aux passages privés | Source, version, passage, titre et date sont conservés ; les droits privés sont vérifiés avant écriture et lecture |
+| Idempotence | FR-032 | Aucun registre ne protégeait le rejeu | Un même ordre de consolidation retrouve la même investigation sans doublon |
+| Contrat HTTP | FR-032 | La route retournait 404 | Création et liste des investigations exposées avec validation stricte et erreurs structurées |
+| Studio consultant | US05, FR-031, FR-032 | Le bouton de consolidation était absent | Comparaison côte à côte, absence d'arbitrage, question proposée et rôle cible sont visibles dans Chromium |
+
+Preuve : `docs/validation/T009.md`. Vérification consolidée : 54 tests de domaine, d'intégration et de contrat ainsi que 14 parcours Chromium réussis.
+
+Limites : la détection locale compare des formulations normalisées sélectionnées explicitement ; elle ne déduit pas encore que deux phrases sémantiquement proches décrivent la même règle. L'utilisateur ne peut pas encore qualifier l'écart comme correction, variante conditionnelle, évolution temporelle ou désaccord non résolu. Le plan d'entretiens, sa version partageable, les relances en direct et la propagation de l'écart dans le diagnostic restent à développer. Le rôle habilité à arbitrer doit encore être confirmé par la gouvernance du pilote.

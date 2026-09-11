@@ -20,6 +20,8 @@ import type {
   BpmnValidation,
 } from '../../contracts/bpmn.ts';
 import { BpmnPanel } from '../bpmn/BpmnPanel.tsx';
+import type { InterviewInvestigation } from '../../contracts/interview-review.ts';
+import { InterviewReviewPanel } from '../consultant/InterviewReviewPanel.tsx';
 
 const modelPath = (dossierId: string) => `/api/dossiers/${dossierId}/models/process-diagnostic`;
 const bpmnPath = (dossierId: string) => `${modelPath(dossierId)}/bpmn`;
@@ -145,6 +147,8 @@ export function Studio() {
   const [showBpmn, setShowBpmn] = useState(false);
   const [bpmnDocument, setBpmnDocument] = useState<BpmnDocument>();
   const [bpmnValidation, setBpmnValidation] = useState<BpmnValidation>();
+  const [showReviews, setShowReviews] = useState(false);
+  const [reviews, setReviews] = useState<InterviewInvestigation[]>([]);
   const [text, setText] = useState('');
   const [proposal, setProposal] = useState<Proposal>();
   const [busy, setBusy] = useState(false);
@@ -189,6 +193,8 @@ export function Studio() {
     setShowBpmn(false);
     setBpmnDocument(undefined);
     setBpmnValidation(undefined);
+    setShowReviews(false);
+    setReviews([]);
     setProposal(undefined);
     stopMicrophone();
     setInterview(undefined);
@@ -255,6 +261,7 @@ export function Studio() {
       setBpmnDocument(document);
       setBpmnValidation(validation);
       setShowBpmn(true);
+      setShowReviews(false);
       setShowHistory(false);
       setShowSharing(false);
       setSelected(undefined);
@@ -284,6 +291,25 @@ export function Studio() {
       setBusy(false);
     }
     return false;
+  }
+  async function openReviews() {
+    setBusy(true);
+    setError('');
+    try {
+      const result = await read<{ items: InterviewInvestigation[] }>(
+        `${modelPath(activeDossier)}/interview-reviews`,
+      );
+      setReviews(result.items);
+      setShowReviews(true);
+      setShowBpmn(false);
+      setShowHistory(false);
+      setShowSharing(false);
+      setSelected(undefined);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
   function manual(operations: Command['operations'], baseRevision = model!.revision): Command {
     return {
@@ -505,6 +531,16 @@ export function Studio() {
             <span className="private-badge">♧ Préparation privée</span>
             <button
               className="secondary"
+              onClick={showReviews ? () => setShowReviews(false) : openReviews}
+              aria-pressed={showReviews}
+              aria-label={
+                showReviews ? 'Revenir à la carte' : 'Ouvrir la consolidation des entretiens'
+              }
+            >
+              ◉ {showReviews ? 'Carte métier' : 'Consolidation'}
+            </button>
+            <button
+              className="secondary"
               onClick={showBpmn ? () => setShowBpmn(false) : openBpmn}
               aria-pressed={showBpmn}
               aria-label={showBpmn ? 'Revenir à la carte' : 'Ouvrir le profil BPMN'}
@@ -515,6 +551,8 @@ export function Studio() {
               className="secondary"
               onClick={() => {
                 setShowHistory(!showHistory);
+                setShowReviews(false);
+                setShowBpmn(false);
                 setSelected(undefined);
               }}
               aria-pressed={showHistory}
@@ -526,6 +564,8 @@ export function Studio() {
               onClick={() => {
                 setShowSharing(!showSharing);
                 setShowHistory(false);
+                setShowReviews(false);
+                setShowBpmn(false);
                 setSelected(undefined);
               }}
               aria-pressed={showSharing}
@@ -559,6 +599,8 @@ export function Studio() {
           <div className="loading" role="status">
             Ouverture du dossier…
           </div>
+        ) : showReviews ? (
+          <InterviewReviewPanel investigations={reviews} onClose={() => setShowReviews(false)} />
         ) : showBpmn && bpmnDocument && bpmnValidation ? (
           <BpmnPanel
             document={bpmnDocument}

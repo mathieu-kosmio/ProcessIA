@@ -59,7 +59,7 @@ Cette structure est une cible de plan, pas une arborescence applicative déjà c
 C-01 à C-09 : couverts dans le plan proposé. Ratification et vérification sur implémentation restent ouvertes. Complexité retenue : un service applicatif, traitements asynchrones bornés ; aucune infrastructure agentique supplémentaire pour le diagnostic.
 
 
-## Mise en œuvre locale T001 à T008, 9 au 11 septembre 2026
+## Mise en œuvre locale T001 à T009, 9 au 11 septembre 2026
 
 La demande de lancement autorise une première tranche synthétique. Voir `docs/adr/0001-tranche-locale-modele.md` pour le choix local réversible. Versions réellement installées : React 19.3.0, React Flow 12.11.6, Vite 8.2.2, TypeScript 7.0.2, Zod 4.5.4, Playwright 1.63.0, tsx 4.23.13 ; Node testé : 22.14.0, SQLite embarqué : 3.47.2. Le fichier de verrouillage npm fait autorité pour les dépendances transitives.
 
@@ -82,3 +82,5 @@ T006 fige le dossier, le modèle, la vue, la sélection et la révision au débu
 T007 ajoute un service d'entretien local et un contrat indépendant du fournisseur vocal. Une session ordonne les tours voix et texte, les clés d'idempotence, le contexte de sélection, les interruptions et les corrections de transcription. L'interface demande le microphone uniquement après une action explicite, affiche son état et maintient le champ texte en cas de refus. Aucun octet audio n'est écrit. La politique `session` est nettoyée à la fermeture du service ; `dossier` reste persistante et `none` refuse la conservation d'un tour vocal tout en autorisant la saisie manuelle. Cette mise en œuvre simule la transcription : DEC-02 et DEC-04 restent nécessaires avant tout essai vocal réel.
 
 T008 ajoute le profil BPMN local dans `src/contracts/bpmn.ts` et `src/domain/bpmn/profile.ts`. Le document prend en charge les types V1 décrits par FR-022, conserve les sous-processus et borne les sequenceFlow, messageFlow et frontières de sous-processus. Une serviceTask reste une intention avec exécution désactivée. Les commandes sont atomiques, idempotentes et protégées par révision et droits persistants. Le studio expose participants, couloirs, fil de navigation, zoom, sélection et anomalies de brouillon. L'ajout visuel complet, la carte macro, la synchronisation générale des deux représentations et l'aller-retour XML restent ouverts ; DEC-05 continue de bloquer le contrat d'import/export définitif.
+
+T009 ajoute une investigation privée qui conserve plusieurs assertions portant sur la même propriété métier. Chaque assertion référence une transcription, sa version, son passage, son titre et sa date. Des formulations distinctes ouvrent une divergence avec résolution nulle ; leur fréquence ne choisit aucune version. Une question de clarification vise un rôle et conserve la personne à null. Le panneau consultant expose cette comparaison. La détection sémantique, la qualification humaine, le plan d'entretiens, les relances en direct et l'impact diagnostic restent ouverts.

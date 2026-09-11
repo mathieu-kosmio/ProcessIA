@@ -122,6 +122,8 @@ Routes locales :
 - `GET /api/dossiers/:dossier/models/:model/bpmn` : lit le document BPMN détaillé autorisé et sa vue persistée.
 - `GET /api/dossiers/:dossier/models/:model/bpmn/validation` : retourne les anomalies localisées du brouillon et sa capacité d'export selon le profil.
 - `POST /api/dossiers/:dossier/models/:model/bpmn/commands` : applique une commande BPMN atomique liée à la révision courante.
+- `GET /api/dossiers/:dossier/models/:model/interview-reviews` : liste les investigations privées accessibles du modèle.
+- `POST /api/dossiers/:dossier/models/:model/interview-reviews/consolidate` : consolide des références de passages en conservant chaque assertion et sans résolution automatique.
 
 L'historique et la liste des dossiers ne sont pas encore paginés. HTTP local exige un Host `127.0.0.1:port` et une origine identique pour les POST. Codes HTTP : 403 accès, 409 concurrence, 422 commande invalide, 400 JSON invalide, 413 corps trop grand, 415 contenu autre que JSON. Les réponses de proposition utilisent leur statut métier.
 
@@ -161,3 +163,11 @@ Le contrat `src/contracts/bpmn.ts` décrit participants, couloirs, nœuds, flux,
 Le profil accepte début et fin simples, tâches générique, utilisateur, manuelle et service, passerelles exclusive et parallèle, sous-processus incorporé, annotation, objet et stockage de données. Les flux sont `sequenceFlow`, `messageFlow` et `association`. La validation refuse une séquence entre participants, un message interne ou un lien traversant directement la frontière d'un sous-processus. Les anomalies d'événement manquant n'empêchent pas la sauvegarde du brouillon mais rendent `valid_for_export` faux.
 
 Cette surface ne constitue pas encore un contrat BPMN XML. La synchronisation générale avec le modèle de tâches, les éléments avancés, la palette visuelle complète, l'import et l'export seront traités dans les cycles suivants et T011. Les bornes HTTP locales sont des décisions de développement, pas des quotas pilote ratifiés.
+
+## Consolidation locale des entretiens exécutée par T009
+
+Le contrat `src/contracts/interview-review.ts` décrit un sujet métier, des références de témoignages, des assertions proposées, une investigation ouverte et une question de clarification. Une référence contient `source_id`, `source_version` et `passage_id`. Le texte de l'assertion est relu depuis le passage autorisé ; il n'est pas accepté comme une vérité déclarée par le client HTTP.
+
+La consolidation exige au moins deux passages distincts de transcriptions privées. Deux formulations normalisées différentes créent une divergence. Toutes les occurrences restent présentes, avec titre et date de source. Le résultat conserve `resolution: null` et ne contient aucun identifiant d'assertion gagnante. La question proposée nomme le rôle fourni et conserve `target_person: null`.
+
+Les écritures utilisent une clé d'idempotence par dossier. Un rejeu identique retrouve l'investigation ; une autre charge avec la même clé échoue. Lecture et écriture relisent les droits du modèle et des sources privées. Cette surface ne qualifie pas encore une correction, une variante, une évolution temporelle ou un désaccord durable.

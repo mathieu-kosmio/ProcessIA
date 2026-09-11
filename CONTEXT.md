@@ -8,7 +8,7 @@ Mis à jour le 11 septembre 2026 à partir des échanges de conception avec Math
 - Dossier de travail : `/Users/mathieu/Dev/ProcessIA`.
 - Dépôt : `https://github.com/mathieu-kosmio/ProcessIA`.
 - Projet distinct de Bretelles. Aucune contrainte de fournisseur, de runtime ou de déploiement de Bretelles n'est automatiquement reconduite.
-- Stade : développement local démarré le 9 septembre 2026, tranches T001 à T006 vérifiées, socle T007 et noyau T008 vérifiés avec leurs limites documentées.
+- Stade : développement local démarré le 9 septembre 2026, tranches T001 à T006 vérifiées, socle T007, noyau T008 et noyau obligatoire T009 vérifiés avec leurs limites documentées.
 
 ## Décisions confirmées
 
@@ -55,6 +55,6 @@ Statut : spécifications rédigées pour revue. Constitution, règles détaillé
 
 ## Démarrage du développement le 9 septembre 2026
 
-Mathieu demande de lancer puis de poursuivre le développement avec le dépôt GitHub ProcessIA. T001 à T008 utilisent des données synthétiques et un adaptateur de langage simulé. TypeScript, React, Vite, React Flow et SQLite constituent un choix local réversible décrit dans ADR-0001. T001 à T006 sont vérifiées localement. T007 possède un socle vérifié pour la continuité voix-texte, sans reconnaissance ni synthèse vocale réelle. T008 possède un noyau BPMN vérifié : participants, couloirs, types V1, sous-processus, règles de flux, anomalies et navigation persistée. La palette complète, la carte macro et l'aller-retour XML restent ouverts. Cette demande ne vaut pas ratification globale des propositions ni choix des fournisseurs ou de l'identité du pilote externe.
+Mathieu demande de lancer puis de poursuivre le développement avec le dépôt GitHub ProcessIA. T001 à T009 utilisent des données synthétiques et un adaptateur de langage simulé. TypeScript, React, Vite, React Flow et SQLite constituent un choix local réversible décrit dans ADR-0001. T001 à T006 sont vérifiées localement. T007 possède un socle vérifié pour la continuité voix-texte, sans reconnaissance ni synthèse vocale réelle. T008 possède un noyau BPMN vérifié. T009 conserve des assertions contradictoires avec leurs passages privés, ouvre une divergence sans arbitrage automatique et propose un rôle à interroger sans personne inventée. Les compléments SHOULD de planification restent ouverts. Cette demande ne vaut pas ratification globale des propositions ni choix des fournisseurs ou de l'identité du pilote externe.
 
-Le paragraphe de statut v0.2 ci-dessus décrit l'état au moment de la rédaction. L'état courant, les preuves et les limites sont désormais dans `IMPLEMENTATION_PLAN.md` et les fiches `docs/validation/T001.md` à `T008.md`.
+Le paragraphe de statut v0.2 ci-dessus décrit l'état au moment de la rédaction. L'état courant, les preuves et les limites sont désormais dans `IMPLEMENTATION_PLAN.md` et les fiches `docs/validation/T001.md` à `T009.md`.

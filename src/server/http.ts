@@ -10,6 +10,10 @@ import { EnrichmentError, type EnrichmentService } from '../application/intervie
 import { InterviewError, type InterviewService } from '../application/interviews/session.ts';
 import type { BpmnService } from '../adapters/bpmn/service.ts';
 import {
+  InterviewReviewError,
+  type InterviewReviewService,
+} from '../application/interview-review/service.ts';
+import {
   createSharePreviewSchema,
   publishShareSchema,
   revokeShareSchema,
@@ -140,6 +144,33 @@ const bpmnCommandSchema = z
       .max(50),
   })
   .strict();
+const testimonyReferenceSchema = z
+  .object({
+    source_id: z.string().min(1).max(120),
+    source_version: z.number().int().positive(),
+    passage_id: z.string().min(1).max(240),
+  })
+  .strict();
+const consolidateTestimoniesSchema = z
+  .object({
+    idempotency_key: z.string().min(1).max(120),
+    subject: z
+      .object({
+        kind: z.enum(['task_property', 'flow_property']),
+        element_id: z.string().min(1).max(120),
+        property: z.string().min(1).max(120),
+        label: z.string().trim().min(1).max(240),
+      })
+      .strict(),
+    testimonies: z.array(testimonyReferenceSchema).min(2).max(20),
+    target_role: z
+      .object({
+        role_id: z.string().min(1).max(120),
+        label: z.string().trim().min(1).max(160),
+      })
+      .strict(),
+  })
+  .strict();
 class HttpError extends Error {
   constructor(
     public status: number,
@@ -182,6 +213,7 @@ export function createAppServer(
     enrichments?: EnrichmentService;
     interviews?: InterviewService;
     bpmn?: BpmnService;
+    reviews?: InterviewReviewService;
   } = {},
 ) {
   return createServer(async (req, res) => {
@@ -268,6 +300,27 @@ export function createAppServer(
           res,
           result.status === 'conflict' ? 409 : result.status === 'rejected' ? 422 : 200,
           result,
+        );
+        return;
+      }
+      const reviewsMatch =
+        /^\/api\/dossiers\/([\w-]+)\/models\/([\w-]+)\/interview-reviews(\/consolidate)?$/.exec(
+          path,
+        );
+      if (req.method === 'GET' && reviewsMatch && capabilities.reviews) {
+        json(res, 200, capabilities.reviews.list(session, reviewsMatch[1], reviewsMatch[2]));
+        return;
+      }
+      if (req.method === 'POST' && reviewsMatch?.[3] === '/consolidate' && capabilities.reviews) {
+        const parsed = consolidateTestimoniesSchema.safeParse(await body(req));
+        if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+        json(
+          res,
+          201,
+          capabilities.reviews.consolidate(session, reviewsMatch[1], {
+            model_id: reviewsMatch[2],
+            ...parsed.data,
+          }),
         );
         return;
       }
@@ -490,20 +543,28 @@ export function createAppServer(
             ? 409
             : error instanceof InterviewError && error.code === 'IDEMPOTENCY_CONFLICT'
               ? 409
-              : error instanceof InterviewError
-                ? 400
-                : error instanceof EnrichmentError
-                  ? 400
-                  : error instanceof SharingError &&
-                      ['IDEMPOTENCY_CONFLICT', 'PREVIEW_INVALID', 'VERSION_CONFLICT'].includes(
-                        error.code,
-                      )
-                    ? 409
-                    : error instanceof SourceError
+              : error instanceof InterviewReviewError && error.code === 'IDEMPOTENCY_CONFLICT'
+                ? 409
+                : error instanceof InterviewReviewError && error.code === 'NO_DIVERGENCE'
+                  ? 422
+                  : error instanceof InterviewError
+                    ? 400
+                    : error instanceof InterviewReviewError
                       ? 400
-                      : error instanceof HttpError
-                        ? error.status
-                        : 500;
+                      : error instanceof EnrichmentError
+                        ? 400
+                        : error instanceof SharingError &&
+                            [
+                              'IDEMPOTENCY_CONFLICT',
+                              'PREVIEW_INVALID',
+                              'VERSION_CONFLICT',
+                            ].includes(error.code)
+                          ? 409
+                          : error instanceof SourceError
+                            ? 400
+                            : error instanceof HttpError
+                              ? error.status
+                              : 500;
       json(res, status, {
         code:
           error instanceof AccessDenied
@@ -511,7 +572,8 @@ export function createAppServer(
             : error instanceof SourceError ||
                 error instanceof SharingError ||
                 error instanceof EnrichmentError ||
-                error instanceof InterviewError
+                error instanceof InterviewError ||
+                error instanceof InterviewReviewError
               ? error.code
               : error instanceof HttpError
                 ? error.code
@@ -522,7 +584,8 @@ export function createAppServer(
             : error instanceof SourceError ||
                 error instanceof SharingError ||
                 error instanceof EnrichmentError ||
-                error instanceof InterviewError
+                error instanceof InterviewError ||
+                error instanceof InterviewReviewError
               ? error.message
               : 'La demande a échoué. Vos modifications déjà enregistrées sont conservées.',
       });
