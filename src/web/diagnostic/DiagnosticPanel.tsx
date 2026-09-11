@@ -1,7 +1,8 @@
-import type { Diagnostic } from '../../contracts/diagnostic.ts';
+import type { Diagnostic, TargetComparison } from '../../contracts/diagnostic.ts';
 
 type Props = {
   diagnostics: Diagnostic[];
+  targets: TargetComparison[];
   onClose: () => void;
 };
 
@@ -12,7 +13,7 @@ const priorityLabels = {
   unknown: 'Inconnue',
 } as const;
 
-export function DiagnosticPanel({ diagnostics, onClose }: Props) {
+export function DiagnosticPanel({ diagnostics, targets, onClose }: Props) {
   return (
     <section className="diagnostic-panel" aria-label="Diagnostic privé et feuille de route">
       <div className="diagnostic-heading">
@@ -26,7 +27,7 @@ export function DiagnosticPanel({ diagnostics, onClose }: Props) {
         </button>
       </div>
 
-      {diagnostics.length === 0 ? (
+      {diagnostics.length === 0 && targets.length === 0 ? (
         <div className="diagnostic-empty">
           <strong>Aucun diagnostic préparé</strong>
           <p>Un périmètre et des constats validables sont nécessaires.</p>
@@ -137,6 +138,68 @@ export function DiagnosticPanel({ diagnostics, onClose }: Props) {
                   </footer>
                 </section>
               ))}
+            </article>
+          ))}
+          {targets.map((target) => (
+            <article className="target-comparison" key={target.target_id}>
+              <header>
+                <div>
+                  <span className="diagnostic-kicker">COMPARAISON ACTUEL / CIBLE</span>
+                  <h3>Scénario cible : {target.name}</h3>
+                  <p>
+                    Révision de départ {target.based_on_revision} · révision actuelle{' '}
+                    {target.current_revision}
+                  </p>
+                </div>
+                <span
+                  className={`target-reference-state ${target.reconciliation_required ? 'outdated' : ''}`}
+                >
+                  {target.reconciliation_required ? 'Réconciliation requise' : 'Référence à jour'}
+                </span>
+              </header>
+
+              {target.changes.map((change) => (
+                <section className="target-change" key={change.change_id}>
+                  <div className="target-value current">
+                    <span>FONCTIONNEMENT ACTUEL</span>
+                    <strong>{change.current_value ?? 'Élément absent'}</strong>
+                    <small>Valeur de référence : {change.reference_value}</small>
+                  </div>
+                  <div className="target-arrow" aria-hidden="true">
+                    →
+                  </div>
+                  <div className="target-value proposed">
+                    <span>
+                      {target.target_status === 'validated' ? 'CIBLE VALIDÉE' : 'CIBLE PROPOSÉE'}
+                    </span>
+                    <strong>{change.target_value}</strong>
+                    <small>
+                      {change.prepared_by === 'ai' ? 'Préparée par IA' : 'Préparée humainement'}
+                    </small>
+                  </div>
+                  <p className="target-rationale">{change.rationale}</p>
+                </section>
+              ))}
+
+              {target.validation && (
+                <div className="target-validation">
+                  <div>
+                    <span>VALIDATION HUMAINE</span>
+                    <strong>Validée par {target.validation.actor}</strong>
+                    <p>{target.validation.justification}</p>
+                  </div>
+                  <small>Scénario souhaité, sans déploiement</small>
+                </div>
+              )}
+
+              <footer className="target-guardrail">
+                <strong>La cible ne modifie pas le fonctionnement actuel.</strong>
+                <span>
+                  {target.reconciliation_required
+                    ? 'La carte a évolué. Une réconciliation explicite est nécessaire.'
+                    : 'Toute mise en œuvre exige une décision et une action distinctes.'}
+                </span>
+              </footer>
             </article>
           ))}
         </div>

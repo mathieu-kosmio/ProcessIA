@@ -28,4 +28,29 @@ test('T010 : relier un constat, une opportunité et un essai sans valeur invent�
   await expect(page.getByText('Responsable : Direction', { exact: true })).toBeVisible();
   await expect(page.getByText('À estimer', { exact: true })).toHaveCount(2);
   await expect(page.getByText('Aucun agent démarré', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Scénario cible : Restitution assistée' }),
+  ).toBeVisible();
+  const targetResponse = await page.request.get(
+    '/api/dossiers/demo-kosmio/models/process-diagnostic/targets',
+  );
+  expect(targetResponse.ok()).toBe(true);
+  const targetState = (await targetResponse.json()) as {
+    items: Array<{ reference_status: 'current' | 'outdated' }>;
+  };
+  expect(targetState.items).toHaveLength(1);
+  const expectedStatus =
+    targetState.items[0]?.reference_status === 'outdated'
+      ? 'Réconciliation requise'
+      : 'Référence à jour';
+  await expect(page.getByText(expectedStatus, { exact: true })).toBeVisible();
+  await expect(page.getByText('Restituer le diagnostic', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Préparer et valider la restitution assistée', { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText('Préparée par IA', { exact: true })).toBeVisible();
+  await expect(page.getByText('Validée par local-consultant', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('La cible ne modifie pas le fonctionnement actuel.', { exact: true }),
+  ).toBeVisible();
 });

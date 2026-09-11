@@ -22,7 +22,7 @@ import type {
 import { BpmnPanel } from '../bpmn/BpmnPanel.tsx';
 import type { InterviewInvestigation } from '../../contracts/interview-review.ts';
 import { InterviewReviewPanel } from '../consultant/InterviewReviewPanel.tsx';
-import type { Diagnostic } from '../../contracts/diagnostic.ts';
+import type { Diagnostic, TargetComparison } from '../../contracts/diagnostic.ts';
 import { DiagnosticPanel } from '../diagnostic/DiagnosticPanel.tsx';
 
 const modelPath = (dossierId: string) => `/api/dossiers/${dossierId}/models/process-diagnostic`;
@@ -153,6 +153,7 @@ export function Studio() {
   const [reviews, setReviews] = useState<InterviewInvestigation[]>([]);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+  const [targets, setTargets] = useState<TargetComparison[]>([]);
   const [text, setText] = useState('');
   const [proposal, setProposal] = useState<Proposal>();
   const [busy, setBusy] = useState(false);
@@ -201,6 +202,7 @@ export function Studio() {
     setReviews([]);
     setShowDiagnostics(false);
     setDiagnostics([]);
+    setTargets([]);
     setProposal(undefined);
     stopMicrophone();
     setInterview(undefined);
@@ -323,8 +325,13 @@ export function Studio() {
     setBusy(true);
     setError('');
     try {
-      const result = await read<{ items: Diagnostic[] }>(`${modelPath(activeDossier)}/diagnostics`);
-      setDiagnostics(result.items);
+      const path = modelPath(activeDossier);
+      const [diagnosticResult, targetResult] = await Promise.all([
+        read<{ items: Diagnostic[] }>(`${path}/diagnostics`),
+        read<{ items: TargetComparison[] }>(`${path}/targets`),
+      ]);
+      setDiagnostics(diagnosticResult.items);
+      setTargets(targetResult.items);
       setShowDiagnostics(true);
       setShowReviews(false);
       setShowBpmn(false);
@@ -640,7 +647,11 @@ export function Studio() {
             Ouverture du dossier…
           </div>
         ) : showDiagnostics ? (
-          <DiagnosticPanel diagnostics={diagnostics} onClose={() => setShowDiagnostics(false)} />
+          <DiagnosticPanel
+            diagnostics={diagnostics}
+            targets={targets}
+            onClose={() => setShowDiagnostics(false)}
+          />
         ) : showReviews ? (
           <InterviewReviewPanel investigations={reviews} onClose={() => setShowReviews(false)} />
         ) : showBpmn && bpmnDocument && bpmnValidation ? (

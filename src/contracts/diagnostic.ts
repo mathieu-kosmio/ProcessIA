@@ -98,3 +98,65 @@ export type Diagnostic = {
   };
   created_at: string;
 };
+
+export type TargetChangeInput = {
+  change_id: string;
+  type: 'update_task_label';
+  task_id: string;
+  before_label: string;
+  after_label: string;
+  prepared_by: 'ai' | 'human';
+  rationale: string;
+};
+
+export type CreateTargetScenarioInput = {
+  idempotency_key: string;
+  model_id: string;
+  base_revision: number;
+  name: string;
+  changes: TargetChangeInput[];
+};
+
+export type TargetValidation = {
+  actor: string;
+  application_role: 'consultant' | 'responsable' | null;
+  justification: string;
+  validated_at: string;
+};
+
+export type TargetScenario = {
+  target_id: string;
+  dossier_id: string;
+  model_id: string;
+  name: string;
+  based_on_revision: number;
+  version: number;
+  status: 'proposed' | 'validated';
+  changes: TargetChangeInput[];
+  validation: TargetValidation | null;
+  created_at: string;
+};
+
+export type ValidateTargetScenarioInput = {
+  idempotency_key: string;
+  base_version: number;
+  justification: string;
+};
+
+export type TargetComparison = {
+  target_id: string;
+  name: string;
+  based_on_revision: number;
+  current_revision: number;
+  reference_status: 'current' | 'outdated';
+  reconciliation_required: boolean;
+  target_status: TargetScenario['status'];
+  validation: TargetValidation | null;
+  changes: Array<
+    TargetChangeInput & {
+      reference_value: string;
+      current_value: string | null;
+      target_value: string;
+    }
+  >;
+};

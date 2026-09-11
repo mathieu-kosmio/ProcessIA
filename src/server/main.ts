@@ -11,6 +11,7 @@ import { InterviewService } from '../application/interviews/session.ts';
 import { BpmnService } from '../adapters/bpmn/service.ts';
 import { InterviewReviewService } from '../application/interview-review/service.ts';
 import { DiagnosticService } from '../application/diagnostic/service.ts';
+import { TargetScenarioService } from '../application/diagnostic/target-service.ts';
 
 const requestedDatabasePath = process.env.PROCESSIA_DB_PATH ?? resolve('.local/processia.sqlite');
 const ephemeralDatabase = requestedDatabasePath === ':memory:';
@@ -26,6 +27,7 @@ const interviews = new InterviewService(databasePath, service);
 const bpmn = new BpmnService(databasePath, service);
 const reviews = new InterviewReviewService(databasePath, service, sources);
 const diagnostics = new DiagnosticService(databasePath, service, reviews);
+const targets = new TargetScenarioService(databasePath, service);
 sources.add(demoSession, {
   dossier_id: 'demo-kosmio',
   idempotency_key: 'demo-source-cadrage-v1',
@@ -136,6 +138,33 @@ diagnostics.create(demoSession, 'demo-kosmio', {
     },
   },
 });
+if (targets.list(demoSession, 'demo-kosmio', 'process-diagnostic').items.length === 0) {
+  const currentModel = service.getModel(demoSession, 'demo-kosmio', 'process-diagnostic');
+  const restitution = currentModel.tasks.find((task) => task.id === 'task-restitution');
+  if (!restitution) throw new Error('La tâche de restitution synthétique est indisponible.');
+  const target = targets.create(demoSession, 'demo-kosmio', {
+    idempotency_key: 'demo-target-assisted-review-v1',
+    model_id: 'process-diagnostic',
+    base_revision: currentModel.revision,
+    name: 'Restitution assistée',
+    changes: [
+      {
+        change_id: 'change-restitution-work',
+        type: 'update_task_label',
+        task_id: restitution.id,
+        before_label: restitution.label,
+        after_label: 'Préparer et valider la restitution assistée',
+        prepared_by: 'ai',
+        rationale: 'Rendre la validation humaine visible avant tout envoi.',
+      },
+    ],
+  });
+  targets.validate(demoSession, 'demo-kosmio', 'process-diagnostic', target.target_id, {
+    idempotency_key: 'demo-target-assisted-review-validation-v1',
+    base_version: target.version,
+    justification: 'Cible synthétique retenue comme scénario de travail à expérimenter.',
+  });
+}
 let vite: ViteDevServer | undefined;
 const production = process.env.NODE_ENV === 'production';
 const dist = resolve('dist');
@@ -173,7 +202,7 @@ const server = createAppServer(
     res.end(req.method === 'HEAD' ? undefined : readFileSync(file));
   },
   demoSession,
-  { sources, sharing, enrichments, interviews, bpmn, reviews, diagnostics },
+  { sources, sharing, enrichments, interviews, bpmn, reviews, diagnostics, targets },
 );
 if (!production) {
   const { createServer } = await import('vite');
@@ -188,6 +217,7 @@ async function shutdown() {
   server.close(() => {
     interviews.close();
     diagnostics.close();
+    targets.close();
     reviews.close();
     bpmn.close();
     enrichments.close();

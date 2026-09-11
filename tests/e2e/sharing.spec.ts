@@ -7,7 +7,7 @@ test('T005 : prévisualiser, confirmer et retirer une formulation partagée', as
   await page.getByRole('button', { name: 'Sources & partage' }).click();
   const panel = page.getByRole('complementary', { name: 'Sources et partage' });
   await expect(panel.getByRole('heading', { name: 'Partager une formulation' })).toBeVisible();
-  await expect(panel.getByLabel('Source privée')).toHaveValue(/.+/);
+  await panel.getByLabel('Source privée').selectOption({ label: 'Note de cadrage synthétique' });
   await expect(panel.getByTestId('private-passage')).toContainText('REPERE-PRIVE-DEMO');
 
   const sharedText = 'Une revue des recommandations précède la restitution.';

@@ -180,4 +180,14 @@ Le contrat `src/contracts/diagnostic.ts` décrit le périmètre, le constat, les
 
 Une valeur ou une faisabilité absente conserve `value: null` et le libellé Inconnue. Le score reste nul avec une explication, car DEC-07 ne valide encore aucune méthode de pondération. La priorité est une proposition motivée distincte de la possibilité de démarrer. Un usage IA conserve un responsable humain, un protocole et au moins un critère de réussite. Son état d'exécution reste `not_started`.
 
-Chaque prérequis devient une action avec un critère de sortie. L'essai dépend de ces actions, son effort reste nul et porte le libellé À estimer. Cette surface ne lance aucun agent, outil métier ou conteneur. Elle ne couvre pas encore la comparaison actuel/cible, les modifications historisées, les capacités mutualisées, la publication ou l'export.
+Chaque prérequis devient une action avec un critère de sortie. L'essai dépend de ces actions, son effort reste nul et porte le libellé À estimer. Cette surface ne lance aucun agent, outil métier ou conteneur.
+
+La comparaison actuel/cible utilise les routes privées suivantes :
+
+- `POST /api/dossiers/{dossier_id}/models/{model_id}/targets` crée une proposition fondée sur une révision exacte ;
+- `POST /api/dossiers/{dossier_id}/models/{model_id}/targets/{target_id}/validate` conserve la décision humaine, son auteur applicatif et sa justification ;
+- `GET /api/dossiers/{dossier_id}/models/{model_id}/targets` compare chaque cible à la révision actuelle.
+
+Le noyau accepte une modification `update_task_label`. Elle conserve l'identifiant de tâche, la valeur de référence, la valeur cible, l'origine humaine ou IA et sa justification. La validation d'une cible ne commande aucune mutation du modèle. Si sa révision de départ diffère de la révision actuelle, la lecture retourne `reference_status: outdated` et `reconciliation_required: true` avec les valeurs actuelle, de référence et cible. Les écritures sont idempotentes et protégées par une version propre au scénario cible.
+
+Les autres types de changements cibles, les modifications historisées du diagnostic et de la priorité, les capacités mutualisées, la publication et l'export restent ouverts.
