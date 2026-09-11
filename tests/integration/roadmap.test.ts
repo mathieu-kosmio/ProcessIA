@@ -131,6 +131,8 @@ test('T010 / TC-034 à TC-037 : une opportunité traçable devient un essai ordo
 
   const result = diagnostics.create(demoSession, 'demo-kosmio', input);
   assert.equal(result.status, 'draft');
+  assert.equal(result.version, 1);
+  assert.deepEqual(result.priority_history, []);
   assert.equal(result.based_on_revision, before.revision);
   assert.deepEqual(result.scope.task_ids, input.scope.task_ids);
   assert.match(result.scope.coverage_limit, /deux tâches/i);
@@ -161,6 +163,79 @@ test('T010 / TC-034 à TC-037 : une opportunité traçable devient un essai ordo
   const replay = diagnostics.create(demoSession, 'demo-kosmio', input);
   assert.equal(replay.diagnostic_id, result.diagnostic_id);
   assert.equal(diagnostics.list(demoSession, 'demo-kosmio', 'process-diagnostic').items.length, 1);
+
+  const revised = diagnostics.revisePriority(
+    demoSession,
+    'demo-kosmio',
+    'process-diagnostic',
+    result.diagnostic_id,
+    'opportunity-assisted-review',
+    {
+      idempotency_key: 'diagnostic-priority-high-v1',
+      base_version: result.version,
+      level: 'high',
+      justification: 'La Direction souhaite préparer cet essai dès que le prérequis est levé.',
+    },
+  );
+  assert.equal(revised.version, 2);
+  assert.equal(revised.opportunities[0].priority.level, 'high');
+  assert.equal(revised.opportunities[0].priority.status, 'manual');
+  assert.equal(revised.priority_history.length, 1);
+  assert.equal(revised.priority_history[0].previous.level, 'medium');
+  assert.equal(revised.priority_history[0].next.level, 'high');
+  assert.equal(revised.priority_history[0].actor, demoSession.user_id);
+  assert.match(revised.priority_history[0].justification, /Direction souhaite/i);
+  assert.equal(Number.isNaN(Date.parse(revised.priority_history[0].changed_at)), false);
+
+  const revisedReplay = diagnostics.revisePriority(
+    demoSession,
+    'demo-kosmio',
+    'process-diagnostic',
+    result.diagnostic_id,
+    'opportunity-assisted-review',
+    {
+      idempotency_key: 'diagnostic-priority-high-v1',
+      base_version: result.version,
+      level: 'high',
+      justification: 'La Direction souhaite préparer cet essai dès que le prérequis est levé.',
+    },
+  );
+  assert.deepEqual(revisedReplay, revised);
+  assert.throws(
+    () =>
+      diagnostics.revisePriority(
+        demoSession,
+        'demo-kosmio',
+        'process-diagnostic',
+        result.diagnostic_id,
+        'opportunity-assisted-review',
+        {
+          idempotency_key: 'diagnostic-priority-low-stale',
+          base_version: result.version,
+          level: 'low',
+          justification: 'Une autre lecture propose de différer cet essai.',
+        },
+      ),
+    /diagnostic a changé/i,
+  );
+  const outsider = { user_id: 'outsider', application_role: 'consultant' as const, grants: [] };
+  assert.throws(
+    () =>
+      diagnostics.revisePriority(
+        outsider,
+        'demo-kosmio',
+        'process-diagnostic',
+        result.diagnostic_id,
+        'opportunity-assisted-review',
+        {
+          idempotency_key: 'diagnostic-priority-outsider',
+          base_version: revised.version,
+          level: 'low',
+          justification: 'Tentative hors du dossier privé.',
+        },
+      ),
+    /ACCESS_DENIED/,
+  );
 });
 
 test('T010 / C-05 : les droits privés sont appliqués avant la génération', (t) => {

@@ -1,6 +1,6 @@
 # ProcessIA · Suivi de développement
 
-Version 0.12.0, 11 septembre 2026. Développement local en cours, par tranches verticales TDD.
+Version 0.13.0, 11 septembre 2026. Développement local en cours, par tranches verticales TDD.
 
 | Tranche | Parcours principal | Résultat | État |
 | --- | --- | --- | --- |
@@ -184,7 +184,7 @@ Limites : la détection locale compare des formulations normalisées sélectionn
 
 ## T010 · Diagnostic et feuille de route
 
-Statut : noyaux FR-033 à FR-037 vérifiés localement le 11 septembre 2026. La comparaison actuel/cible couvre le libellé d'une tâche et signale toute révision ultérieure comme devant être réconciliée. L'édition manuelle de priorité et son historique, les capacités mutualisées et le suivi des résultats restent à développer. DEC-07 bloque toujours la méthode de score et le format métier définitifs.
+Statut : noyaux FR-033 à FR-037 vérifiés localement le 11 septembre 2026. La comparaison actuel/cible couvre le libellé d'une tâche et signale toute révision ultérieure comme devant être réconciliée. La priorité proposée peut être révisée manuellement avec auteur, justification et historique. Les capacités mutualisées et le suivi des résultats restent à développer. DEC-07 bloque toujours la méthode de score et le format métier définitifs.
 
 Premier comportement visé : produire depuis une révision précise un diagnostic privé au périmètre limité, relier une opportunité à un constat et à une divergence, conserver une faisabilité inconnue, expliquer la priorité et ordonner le prérequis avant un essai à validation humaine.
 
@@ -192,6 +192,7 @@ Premier comportement visé : produire depuis une révision précise un diagnosti
 | --- | --- | --- | --- |
 | Diagnostic circonscrit | FR-034, TC-034, C-03 | Le service de diagnostic était absent | Révision, tâches étudiées, limite de couverture, constat et divergence liée sont conservés |
 | Priorité explicable | FR-035, TC-035 | Une valeur absente n'avait aucune représentation publique | Faisabilité `null`, libellé Inconnue, score indisponible, prérequis bloquant et justification restent distincts |
+| Révision manuelle | FR-035, AC-035-3, TC-035 | Le diagnostic n'avait ni version propre ni historique de priorité | Une modification motivée crée une nouvelle version, conserve l'avant, l'après et l'auteur, et refuse une écriture obsolète |
 | Usage IA testable | FR-036, TC-036 | Aucun contrat ne reliait responsable humain, hypothèse et critères | Responsable, bénéficiaire, protocole et critères de réussite sont présents ; l'exécution reste `not_started` |
 | Feuille de route | FR-037, TC-037 | Aucun ordre d'action ne précédait l'essai | Le critère de sortie du prérequis est explicite et l'essai dépend de cette action |
 | Scénario cible distinct | FR-033, TC-033 | Le service de scénario cible était absent | Une cible préparée par IA référence la révision et la valeur de départ, puis conserve une validation humaine sans modifier le modèle réel |
@@ -201,4 +202,4 @@ Premier comportement visé : produire depuis une révision précise un diagnosti
 
 Preuve : `docs/validation/T010.md`. Vérification consolidée : 60 tests de domaine, d'intégration et de contrat ainsi que 15 parcours Chromium réussis.
 
-Limites : ce noyau traite une opportunité synthétique reliée à une divergence ouverte et une cible limitée au changement de libellé d'une tâche. Il ne génère pas encore plusieurs options organisationnelles, d'automatisation et d'IA et ne permet pas la révision humaine de la priorité. Toute nouvelle révision rend actuellement la cible obsolète, y compris si elle touche un autre élément. Aucun score pondéré n'est calculé tant que DEC-07 reste ouvert. Les actions d'autonomie, les capacités mutualisées, la distinction entre gain hypothétique et mesure observée, la publication et l'export restent ouverts.
+Limites : ce noyau traite une opportunité synthétique reliée à une divergence ouverte et une cible limitée au changement de libellé d'une tâche. Il ne génère pas encore plusieurs options organisationnelles, d'automatisation et d'IA. Toute nouvelle révision rend actuellement la cible obsolète, y compris si elle touche un autre élément. Aucun score pondéré n'est calculé tant que DEC-07 reste ouvert. Les actions d'autonomie, les capacités mutualisées, la distinction entre gain hypothétique et mesure observée, la publication et l'export restent ouverts.

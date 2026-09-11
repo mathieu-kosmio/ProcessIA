@@ -53,4 +53,23 @@ test('T010 : relier un constat, une opportunité et un essai sans valeur invent�
   await expect(
     page.getByText('La cible ne modifie pas le fonctionnement actuel.', { exact: true }),
   ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Réviser la priorité' }).click();
+  await page.getByLabel('Nouvelle priorité').selectOption('high');
+  const justification = 'La Direction souhaite préparer cet essai dès la levée du prérequis.';
+  await page.getByLabel('Justification de la priorité').fill(justification);
+  await page.getByRole('button', { name: 'Enregistrer la priorité' }).click();
+
+  await expect(page.getByText('Priorité manuelle', { exact: true })).toBeVisible();
+  await expect(page.getByText('Haute', { exact: true })).toBeVisible();
+  await expect(page.getByText(/diagnostic v2/)).toBeVisible();
+  const priorityHistory = page.getByRole('region', { name: 'Historique des priorités' });
+  await expect(
+    priorityHistory.getByRole('heading', { name: 'Historique des priorités' }),
+  ).toBeVisible();
+  await expect(priorityHistory.getByText('Moyenne → Haute', { exact: true })).toBeVisible();
+  await expect(
+    priorityHistory.getByText('Modifiée par local-consultant', { exact: true }),
+  ).toBeVisible();
+  await expect(priorityHistory.getByText(justification, { exact: true })).toBeVisible();
 });

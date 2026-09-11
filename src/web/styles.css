@@ -1143,6 +1143,100 @@ h1 {
   color: #7d765f;
   font-size: 9px;
 }
+.priority-review {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+.priority-review form {
+  display: grid;
+  grid-template-columns: 180px minmax(280px, 1fr);
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid #d9e1d5;
+  border-radius: 8px;
+  background: #f7f9f5;
+}
+.priority-review label {
+  display: grid;
+  gap: 7px;
+  color: #526557;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+.priority-review select,
+.priority-review textarea {
+  width: 100%;
+  border: 1px solid #cfd9cb;
+  border-radius: 7px;
+  background: #fff;
+  color: #2f4e3d;
+  font: inherit;
+  font-size: 11px;
+}
+.priority-review select {
+  min-height: 40px;
+  padding: 0 10px;
+}
+.priority-review textarea {
+  min-height: 72px;
+  padding: 10px;
+  resize: vertical;
+}
+.priority-review form > div,
+.priority-review form > [role='alert'] {
+  grid-column: 1 / -1;
+}
+.priority-review form > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.priority-review [role='alert'] {
+  margin: 0;
+  color: #8a3d35;
+  font-size: 10px;
+}
+.priority-history {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid #dce4d8;
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+.priority-history h4 {
+  margin: 0 0 10px;
+  color: #3d5c49;
+  font-size: 11px;
+}
+.priority-history ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.priority-history li {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+.priority-history li strong,
+.priority-history li span {
+  color: #4d6555;
+  font-size: 10px;
+}
+.priority-history li span {
+  color: #788579;
+}
+.priority-history li p {
+  margin: 0;
+  color: #657469;
+  font-size: 9px;
+}
 .roadmap-section {
   margin-top: 22px;
   padding-top: 20px;
@@ -2253,6 +2347,13 @@ dd {
   }
   .diagnostic-finding {
     grid-template-columns: 1fr;
+  }
+  .priority-review form,
+  .priority-history li {
+    grid-template-columns: 1fr;
+  }
+  .priority-history li {
+    gap: 5px;
   }
   .target-comparison > header,
   .target-validation,

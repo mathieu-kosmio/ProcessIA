@@ -22,7 +22,7 @@ import type {
 import { BpmnPanel } from '../bpmn/BpmnPanel.tsx';
 import type { InterviewInvestigation } from '../../contracts/interview-review.ts';
 import { InterviewReviewPanel } from '../consultant/InterviewReviewPanel.tsx';
-import type { Diagnostic, TargetComparison } from '../../contracts/diagnostic.ts';
+import type { Diagnostic, PriorityLevel, TargetComparison } from '../../contracts/diagnostic.ts';
 import { DiagnosticPanel } from '../diagnostic/DiagnosticPanel.tsx';
 
 const modelPath = (dossierId: string) => `/api/dossiers/${dossierId}/models/process-diagnostic`;
@@ -344,6 +344,26 @@ export function Studio() {
       setBusy(false);
     }
   }
+  async function revisePriority(
+    diagnosticId: string,
+    opportunityId: string,
+    baseVersion: number,
+    level: PriorityLevel,
+    justification: string,
+  ) {
+    const revised = await post<Diagnostic>(
+      `${modelPath(activeDossier)}/diagnostics/${diagnosticId}/opportunities/${opportunityId}/priority`,
+      {
+        idempotency_key: crypto.randomUUID(),
+        base_version: baseVersion,
+        level,
+        justification,
+      },
+    );
+    setDiagnostics((items) =>
+      items.map((item) => (item.diagnostic_id === revised.diagnostic_id ? revised : item)),
+    );
+  }
   function manual(operations: Command['operations'], baseRevision = model!.revision): Command {
     return {
       schema_version: '1',
@@ -650,6 +670,7 @@ export function Studio() {
           <DiagnosticPanel
             diagnostics={diagnostics}
             targets={targets}
+            onRevisePriority={revisePriority}
             onClose={() => setShowDiagnostics(false)}
           />
         ) : showReviews ? (

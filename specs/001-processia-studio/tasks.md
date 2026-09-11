@@ -203,7 +203,7 @@ Progression locale au 11 septembre 2026 : assertions distinctes, provenances pri
 
 **Démonstration de sortie :** Une opportunité liée au constat possède prérequis, priorité expliquée, responsable et essai ; une valeur inconnue reste inconnue.
 
-Progression locale au 11 septembre 2026 : diagnostic privé lié à une révision, périmètre et couverture explicites, constat relié à la divergence T009, faisabilité inconnue, priorité proposée et justifiée, responsable humain, prérequis et essai ordonnés sont vérifiés. FR-033 est vérifiée pour une cible qui modifie le libellé d'une tâche : préparation IA, validation humaine, modèle réel inchangé et réconciliation explicite après une nouvelle révision. Les autres types de changements cibles, l'édition avec historique FR-035-3, les capacités mutualisées FR-036-1 et l'autonomie ou la mesure après essai FR-037-2 à FR-037-3 restent ouverts.
+Progression locale au 11 septembre 2026 : diagnostic privé lié à une révision, périmètre et couverture explicites, constat relié à la divergence T009, faisabilité inconnue, priorité proposée et justifiée, responsable humain, prérequis et essai ordonnés sont vérifiés. FR-033 est vérifiée pour une cible qui modifie le libellé d'une tâche : préparation IA, validation humaine, modèle réel inchangé et réconciliation explicite après une nouvelle révision. AC-035-3 est vérifié par une priorité manuelle versionnée qui conserve l'auteur, la justification et l'historique. Les autres types de changements cibles, les capacités mutualisées FR-036-1 et l'autonomie ou la mesure après essai FR-037-2 à FR-037-3 restent ouverts.
 
 ### T011 · Figer et exporter les résultats autorisés
 

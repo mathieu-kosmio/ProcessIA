@@ -5,6 +5,8 @@ import type {
   CreateDiagnosticInput,
   CriterionAssessment,
   Diagnostic,
+  DiagnosticPriority,
+  RevisePriorityInput,
   RoadmapAction,
 } from '../../contracts/diagnostic.ts';
 import type { ModelService } from '../model/service.ts';
@@ -13,7 +15,13 @@ import type { InterviewReviewService } from '../interview-review/service.ts';
 export class DiagnosticError extends Error {
   constructor(
     public readonly code:
-      'INVALID_SCOPE' | 'INVALID_FINDING' | 'INVALID_OPPORTUNITY' | 'IDEMPOTENCY_CONFLICT',
+      | 'INVALID_SCOPE'
+      | 'INVALID_FINDING'
+      | 'INVALID_OPPORTUNITY'
+      | 'INVALID_PRIORITY'
+      | 'DIAGNOSTIC_NOT_FOUND'
+      | 'DIAGNOSTIC_CONFLICT'
+      | 'IDEMPOTENCY_CONFLICT',
     message: string,
   ) {
     super(message);
@@ -108,7 +116,7 @@ export class DiagnosticService {
             'IDEMPOTENCY_CONFLICT',
             'Cette clé correspond déjà à un autre diagnostic.',
           );
-        const result = JSON.parse(previous.result) as Diagnostic;
+        const result = normalizeDiagnostic(JSON.parse(previous.result) as Diagnostic);
         this.db.exec('COMMIT');
         return result;
       }
@@ -135,6 +143,7 @@ export class DiagnosticService {
         dossier_id: dossierId,
         model_id: input.model_id,
         based_on_revision: model.revision,
+        version: 1,
         status: 'draft',
         scope: input.scope,
         findings: [input.finding],
@@ -169,6 +178,7 @@ export class DiagnosticService {
           ],
         },
         estimated_gain: { status: 'unknown', value: null, label: 'À mesurer' },
+        priority_history: [],
         created_at: new Date().toISOString(),
       };
       this.db
@@ -197,6 +207,100 @@ export class DiagnosticService {
     }
   }
 
+  revisePriority(
+    session: Session,
+    dossierId: string,
+    modelId: string,
+    diagnosticId: string,
+    opportunityId: string,
+    input: RevisePriorityInput,
+  ): Diagnostic {
+    this.models.getModel(session, dossierId, modelId, true);
+    const payloadHash = hash({
+      operation: 'revise_priority',
+      dossier_id: dossierId,
+      model_id: modelId,
+      diagnostic_id: diagnosticId,
+      opportunity_id: opportunityId,
+      ...input,
+    });
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const previous = this.command(dossierId, input.idempotency_key);
+      if (previous) {
+        this.assertReplay(previous, session, payloadHash);
+        const result = normalizeDiagnostic(JSON.parse(previous.result) as Diagnostic);
+        this.db.exec('COMMIT');
+        return result;
+      }
+      const diagnostic = this.read(dossierId, modelId, diagnosticId);
+      if (diagnostic.version !== input.base_version)
+        throw new DiagnosticError(
+          'DIAGNOSTIC_CONFLICT',
+          'Le diagnostic a changé. Rechargez-le avant de modifier la priorité.',
+        );
+      if (!input.justification.trim())
+        throw new DiagnosticError(
+          'INVALID_PRIORITY',
+          'La révision manuelle exige une justification.',
+        );
+      const opportunityIndex = diagnostic.opportunities.findIndex(
+        (item) => item.opportunity_id === opportunityId,
+      );
+      const opportunity = diagnostic.opportunities[opportunityIndex];
+      if (!opportunity || opportunity.priority.level === input.level)
+        throw new DiagnosticError(
+          'INVALID_PRIORITY',
+          'La révision doit cibler une opportunité existante et changer sa priorité.',
+        );
+      const nextPriority: DiagnosticPriority = {
+        level: input.level,
+        rationale: input.justification.trim(),
+        status: 'manual',
+      };
+      const nextVersion = diagnostic.version + 1;
+      const changedAt = new Date().toISOString();
+      const result: Diagnostic = {
+        ...diagnostic,
+        version: nextVersion,
+        opportunities: diagnostic.opportunities.map((item, index) =>
+          index === opportunityIndex ? { ...item, priority: nextPriority } : item,
+        ),
+        priority_history: [
+          ...diagnostic.priority_history,
+          {
+            revision_id: randomUUID(),
+            diagnostic_version: nextVersion,
+            opportunity_id: opportunityId,
+            previous: opportunity.priority,
+            next: nextPriority,
+            actor: session.user_id,
+            application_role: session.application_role ?? null,
+            justification: input.justification.trim(),
+            changed_at: changedAt,
+          },
+        ],
+      };
+      this.db
+        .prepare('UPDATE diagnostics SET data=? WHERE dossier_id=? AND model_id=? AND id=?')
+        .run(JSON.stringify(result), dossierId, modelId, diagnosticId);
+      this.db
+        .prepare('INSERT INTO diagnostic_commands VALUES (?, ?, ?, ?, ?)')
+        .run(
+          dossierId,
+          input.idempotency_key,
+          session.user_id,
+          payloadHash,
+          JSON.stringify(result),
+        );
+      this.db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   list(session: Session, dossierId: string, modelId: string): { items: Diagnostic[] } {
     this.models.getModel(session, dossierId, modelId);
     this.reviews.list(session, dossierId, modelId);
@@ -206,11 +310,43 @@ export class DiagnosticService {
          WHERE dossier_id=? AND model_id=? ORDER BY created_at, id`,
       )
       .all(dossierId, modelId) as Array<{ data: string }>;
-    return { items: rows.map((row) => JSON.parse(row.data) as Diagnostic) };
+    return {
+      items: rows.map((row) => normalizeDiagnostic(JSON.parse(row.data) as Diagnostic)),
+    };
   }
 
   close() {
     this.db.close();
+  }
+
+  private read(dossierId: string, modelId: string, diagnosticId: string): Diagnostic {
+    const row = this.db
+      .prepare('SELECT data FROM diagnostics WHERE dossier_id=? AND model_id=? AND id=?')
+      .get(dossierId, modelId, diagnosticId) as { data: string } | undefined;
+    if (!row) throw new DiagnosticError('DIAGNOSTIC_NOT_FOUND', 'Le diagnostic est indisponible.');
+    return normalizeDiagnostic(JSON.parse(row.data) as Diagnostic);
+  }
+
+  private command(dossierId: string, idempotencyKey: string) {
+    return this.db
+      .prepare(
+        `SELECT actor, payload_hash, result FROM diagnostic_commands
+         WHERE dossier_id=? AND idempotency_key=?`,
+      )
+      .get(dossierId, idempotencyKey) as
+      { actor: string; payload_hash: string; result: string } | undefined;
+  }
+
+  private assertReplay(
+    previous: { actor: string; payload_hash: string },
+    session: Session,
+    payloadHash: string,
+  ) {
+    if (previous.actor !== session.user_id || previous.payload_hash !== payloadHash)
+      throw new DiagnosticError(
+        'IDEMPOTENCY_CONFLICT',
+        'Cette clé correspond déjà à une autre modification du diagnostic.',
+      );
   }
 }
 
@@ -239,4 +375,12 @@ function assessment(input: {
 
 function hash(value: unknown) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
+function normalizeDiagnostic(diagnostic: Diagnostic): Diagnostic {
+  return {
+    ...diagnostic,
+    version: diagnostic.version ?? 1,
+    priority_history: diagnostic.priority_history ?? [],
+  };
 }

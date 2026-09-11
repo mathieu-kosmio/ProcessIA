@@ -31,6 +31,14 @@ export type OpportunityPrerequisite = {
   completion_criterion: string;
 };
 
+export type PriorityLevel = 'high' | 'medium' | 'low' | 'unknown';
+
+export type DiagnosticPriority = {
+  level: PriorityLevel;
+  rationale: string;
+  status: 'proposed' | 'manual';
+};
+
 export type OpportunityInput = {
   opportunity_id: string;
   title: string;
@@ -39,11 +47,7 @@ export type OpportunityInput = {
   expected_value: CriterionAssessmentInput;
   feasibility: CriterionAssessmentInput;
   prerequisites: OpportunityPrerequisite[];
-  priority: {
-    level: 'high' | 'medium' | 'low' | 'unknown';
-    rationale: string;
-    status: 'proposed';
-  };
+  priority: DiagnosticPriority & { status: 'proposed' };
   human_owner: { role_id: string; label: string };
   experiment: {
     hypothesis: string;
@@ -60,13 +64,33 @@ export type CreateDiagnosticInput = {
   opportunity: OpportunityInput;
 };
 
-export type DiagnosticOpportunity = OpportunityInput & {
+export type DiagnosticOpportunity = Omit<OpportunityInput, 'priority'> & {
   finding_id: string;
   expected_value: CriterionAssessment;
   feasibility: CriterionAssessment;
+  priority: DiagnosticPriority;
   score: null;
   score_explanation: string;
   execution: 'not_started';
+};
+
+export type RevisePriorityInput = {
+  idempotency_key: string;
+  base_version: number;
+  level: PriorityLevel;
+  justification: string;
+};
+
+export type PriorityHistoryEntry = {
+  revision_id: string;
+  diagnostic_version: number;
+  opportunity_id: string;
+  previous: DiagnosticPriority;
+  next: DiagnosticPriority;
+  actor: string;
+  application_role: 'consultant' | 'responsable' | null;
+  justification: string;
+  changed_at: string;
 };
 
 export type RoadmapAction = {
@@ -86,6 +110,7 @@ export type Diagnostic = {
   dossier_id: string;
   model_id: string;
   based_on_revision: number;
+  version: number;
   status: 'draft';
   scope: DiagnosticScope;
   findings: DiagnosticFindingInput[];
@@ -96,6 +121,7 @@ export type Diagnostic = {
     value: null;
     label: 'À mesurer';
   };
+  priority_history: PriorityHistoryEntry[];
   created_at: string;
 };
 

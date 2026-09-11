@@ -126,6 +126,7 @@ Routes locales :
 - `POST /api/dossiers/:dossier/models/:model/interview-reviews/consolidate` : consolide des références de passages en conservant chaque assertion et sans résolution automatique.
 - `GET /api/dossiers/:dossier/models/:model/diagnostics` : liste les diagnostics privés accessibles du modèle.
 - `POST /api/dossiers/:dossier/models/:model/diagnostics` : crée un diagnostic privé rattaché à la révision courante, à un constat et à une investigation accessible.
+- `POST /api/dossiers/:dossier/models/:model/diagnostics/:diagnostic/opportunities/:opportunity/priority` : révise une priorité avec version de base et justification ; l'auteur provient de la session.
 
 L'historique et la liste des dossiers ne sont pas encore paginés. HTTP local exige un Host `127.0.0.1:port` et une origine identique pour les POST. Codes HTTP : 403 accès, 409 concurrence, 422 commande invalide, 400 JSON invalide, 413 corps trop grand, 415 contenu autre que JSON. Les réponses de proposition utilisent leur statut métier.
 
@@ -179,6 +180,8 @@ Les écritures utilisent une clé d'idempotence par dossier. Un rejeu identique 
 Le contrat `src/contracts/diagnostic.ts` décrit le périmètre, le constat, les critères de l'opportunité et les actions de feuille de route. Le service relit le modèle et l'investigation avec les droits courants avant toute création. Les tâches du périmètre doivent exister ; le constat reste dans ce périmètre et référence une divergence accessible.
 
 Une valeur ou une faisabilité absente conserve `value: null` et le libellé Inconnue. Le score reste nul avec une explication, car DEC-07 ne valide encore aucune méthode de pondération. La priorité est une proposition motivée distincte de la possibilité de démarrer. Un usage IA conserve un responsable humain, un protocole et au moins un critère de réussite. Son état d'exécution reste `not_started`.
+
+Le diagnostic possède une version propre. Une révision manuelle de priorité exige une version de base, une nouvelle valeur et une justification. Elle crée une nouvelle version et ajoute une entrée d'historique avec valeur précédente, nouvelle valeur, auteur issu de la session, rôle applicatif et date. Un rejeu identique reste stable ; une version obsolète retourne un conflit. Le client ne peut pas choisir l'auteur dans sa charge utile.
 
 Chaque prérequis devient une action avec un critère de sortie. L'essai dépend de ces actions, son effort reste nul et porte le libellé À estimer. Cette surface ne lance aucun agent, outil métier ou conteneur.
 

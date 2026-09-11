@@ -1,8 +1,16 @@
-import type { Diagnostic, TargetComparison } from '../../contracts/diagnostic.ts';
+import { useState } from 'react';
+import type { Diagnostic, PriorityLevel, TargetComparison } from '../../contracts/diagnostic.ts';
 
 type Props = {
   diagnostics: Diagnostic[];
   targets: TargetComparison[];
+  onRevisePriority: (
+    diagnosticId: string,
+    opportunityId: string,
+    baseVersion: number,
+    level: PriorityLevel,
+    justification: string,
+  ) => Promise<void>;
   onClose: () => void;
 };
 
@@ -13,7 +21,39 @@ const priorityLabels = {
   unknown: 'Inconnue',
 } as const;
 
-export function DiagnosticPanel({ diagnostics, targets, onClose }: Props) {
+export function DiagnosticPanel({ diagnostics, targets, onRevisePriority, onClose }: Props) {
+  const [editingPriority, setEditingPriority] = useState<string>();
+  const [priorityLevel, setPriorityLevel] = useState<PriorityLevel>('high');
+  const [priorityJustification, setPriorityJustification] = useState('');
+  const [priorityBusy, setPriorityBusy] = useState(false);
+  const [priorityError, setPriorityError] = useState('');
+
+  async function submitPriority(
+    diagnostic: Diagnostic,
+    opportunityId: string,
+    event: React.FormEvent,
+  ) {
+    event.preventDefault();
+    if (!priorityJustification.trim()) return;
+    setPriorityBusy(true);
+    setPriorityError('');
+    try {
+      await onRevisePriority(
+        diagnostic.diagnostic_id,
+        opportunityId,
+        diagnostic.version,
+        priorityLevel,
+        priorityJustification.trim(),
+      );
+      setEditingPriority(undefined);
+      setPriorityJustification('');
+    } catch (error) {
+      setPriorityError((error as Error).message);
+    } finally {
+      setPriorityBusy(false);
+    }
+  }
+
   return (
     <section className="diagnostic-panel" aria-label="Diagnostic privé et feuille de route">
       <div className="diagnostic-heading">
@@ -44,7 +84,9 @@ export function DiagnosticPanel({ diagnostics, targets, onClose }: Props) {
                 </div>
                 <div className="diagnostic-meta">
                   <span>Brouillon</span>
-                  <small>Révision {diagnostic.based_on_revision}</small>
+                  <small>
+                    Carte rév. {diagnostic.based_on_revision} · diagnostic v{diagnostic.version}
+                  </small>
                 </div>
               </header>
 
@@ -65,7 +107,11 @@ export function DiagnosticPanel({ diagnostics, targets, onClose }: Props) {
                       <p>Bénéficiaire : {opportunity.beneficiary}</p>
                     </div>
                     <div className="priority-pill">
-                      <span>Priorité proposée</span>
+                      <span>
+                        {opportunity.priority.status === 'manual'
+                          ? 'Priorité manuelle'
+                          : 'Priorité proposée'}
+                      </span>
                       <strong>{priorityLabels[opportunity.priority.level]}</strong>
                     </div>
                   </div>
@@ -98,6 +144,93 @@ export function DiagnosticPanel({ diagnostics, targets, onClose }: Props) {
                     <strong>{opportunity.score_explanation}</strong>
                     <p>{opportunity.priority.rationale}</p>
                   </div>
+
+                  <div className="priority-review">
+                    {editingPriority === opportunity.opportunity_id ? (
+                      <form
+                        onSubmit={(event) =>
+                          submitPriority(diagnostic, opportunity.opportunity_id, event)
+                        }
+                      >
+                        <label>
+                          Nouvelle priorité
+                          <select
+                            value={priorityLevel}
+                            disabled={priorityBusy}
+                            onChange={(event) =>
+                              setPriorityLevel(event.target.value as PriorityLevel)
+                            }
+                          >
+                            {Object.entries(priorityLabels).map(([value, label]) => (
+                              <option value={value} key={value}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Justification de la priorité
+                          <textarea
+                            value={priorityJustification}
+                            disabled={priorityBusy}
+                            required
+                            rows={3}
+                            onChange={(event) => setPriorityJustification(event.target.value)}
+                          />
+                        </label>
+                        {priorityError && <p role="alert">{priorityError}</p>}
+                        <div>
+                          <button type="submit" className="primary" disabled={priorityBusy}>
+                            {priorityBusy ? 'Enregistrement…' : 'Enregistrer la priorité'}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary"
+                            disabled={priorityBusy}
+                            onClick={() => setEditingPriority(undefined)}
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <button
+                        className="secondary"
+                        onClick={() => {
+                          setPriorityLevel(
+                            opportunity.priority.level === 'high' ? 'medium' : 'high',
+                          );
+                          setPriorityJustification('');
+                          setPriorityError('');
+                          setEditingPriority(opportunity.opportunity_id);
+                        }}
+                      >
+                        Réviser la priorité
+                      </button>
+                    )}
+                  </div>
+
+                  {diagnostic.priority_history.some(
+                    (entry) => entry.opportunity_id === opportunity.opportunity_id,
+                  ) && (
+                    <section className="priority-history" aria-label="Historique des priorités">
+                      <h4>Historique des priorités</h4>
+                      <ol>
+                        {diagnostic.priority_history
+                          .filter((entry) => entry.opportunity_id === opportunity.opportunity_id)
+                          .map((entry) => (
+                            <li key={entry.revision_id}>
+                              <strong>
+                                {priorityLabels[entry.previous.level]} →{' '}
+                                {priorityLabels[entry.next.level]}
+                              </strong>
+                              <span>Modifiée par {entry.actor}</span>
+                              <p>{entry.justification}</p>
+                            </li>
+                          ))}
+                      </ol>
+                    </section>
+                  )}
 
                   <div className="roadmap-section">
                     <div className="roadmap-heading">

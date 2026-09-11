@@ -127,6 +127,36 @@ test('T010 / HTTP : générer puis relire un diagnostic et sa feuille de route',
   assert.equal(list.status, 200);
   assert.equal((await list.json()).items[0].diagnostic_id, diagnostic.diagnostic_id);
 
+  const priorityRoute = `${route}/${diagnostic.diagnostic_id}/opportunities/opportunity-assisted-review/priority`;
+  const priorityResponse = await fetch(priorityRoute, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: base },
+    body: JSON.stringify({
+      idempotency_key: 'diagnostic-http-priority-high-v1',
+      base_version: 1,
+      level: 'high',
+      justification: 'La Direction souhaite préparer cet essai dès la levée du prérequis.',
+    }),
+  });
+  assert.equal(priorityResponse.status, 200);
+  const revised = await priorityResponse.json();
+  assert.equal(revised.version, 2);
+  assert.equal(revised.opportunities[0].priority.status, 'manual');
+  assert.equal(revised.priority_history[0].actor, demoSession.user_id);
+
+  const malformedPriority = await fetch(priorityRoute, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: base },
+    body: JSON.stringify({
+      idempotency_key: 'diagnostic-http-priority-invalid',
+      base_version: 2,
+      level: 'low',
+      justification: 'Décision externe non autorisée.',
+      actor: 'admin',
+    }),
+  });
+  assert.equal(malformedPriority.status, 400);
+
   const malformed = await fetch(route, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: base },

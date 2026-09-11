@@ -253,6 +253,14 @@ const createDiagnosticSchema = z
       .strict(),
   })
   .strict();
+const revisePrioritySchema = z
+  .object({
+    idempotency_key: z.string().min(1).max(120),
+    base_version: z.number().int().positive(),
+    level: z.enum(['high', 'medium', 'low', 'unknown']),
+    justification: z.string().trim().min(1).max(1000),
+  })
+  .strict();
 const createTargetScenarioSchema = z
   .object({
     idempotency_key: z.string().min(1).max(120),
@@ -459,6 +467,27 @@ export function createAppServer(
             model_id: diagnosticsMatch[2],
             ...parsed.data,
           }),
+        );
+        return;
+      }
+      const diagnosticPriorityMatch =
+        /^\/api\/dossiers\/([\w-]+)\/models\/([\w-]+)\/diagnostics\/([\w-]+)\/opportunities\/([\w-]+)\/priority$/.exec(
+          path,
+        );
+      if (req.method === 'POST' && diagnosticPriorityMatch && capabilities.diagnostics) {
+        const parsed = revisePrioritySchema.safeParse(await body(req));
+        if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+        json(
+          res,
+          200,
+          capabilities.diagnostics.revisePriority(
+            session,
+            diagnosticPriorityMatch[1],
+            diagnosticPriorityMatch[2],
+            diagnosticPriorityMatch[3],
+            diagnosticPriorityMatch[4],
+            parsed.data,
+          ),
         );
         return;
       }
@@ -722,35 +751,39 @@ export function createAppServer(
                 ? 409
                 : error instanceof DiagnosticError && error.code === 'IDEMPOTENCY_CONFLICT'
                   ? 409
-                  : error instanceof TargetScenarioError &&
-                      ['IDEMPOTENCY_CONFLICT', 'MODEL_CONFLICT', 'TARGET_CONFLICT'].includes(
-                        error.code,
-                      )
+                  : error instanceof DiagnosticError && error.code === 'DIAGNOSTIC_CONFLICT'
                     ? 409
-                    : error instanceof TargetScenarioError && error.code === 'TARGET_NOT_FOUND'
+                    : error instanceof DiagnosticError && error.code === 'DIAGNOSTIC_NOT_FOUND'
                       ? 404
-                      : error instanceof InterviewReviewError && error.code === 'NO_DIVERGENCE'
-                        ? 422
-                        : error instanceof InterviewError
-                          ? 400
-                          : error instanceof InterviewReviewError ||
-                              error instanceof DiagnosticError ||
-                              error instanceof TargetScenarioError
-                            ? 400
-                            : error instanceof EnrichmentError
+                      : error instanceof TargetScenarioError &&
+                          ['IDEMPOTENCY_CONFLICT', 'MODEL_CONFLICT', 'TARGET_CONFLICT'].includes(
+                            error.code,
+                          )
+                        ? 409
+                        : error instanceof TargetScenarioError && error.code === 'TARGET_NOT_FOUND'
+                          ? 404
+                          : error instanceof InterviewReviewError && error.code === 'NO_DIVERGENCE'
+                            ? 422
+                            : error instanceof InterviewError
                               ? 400
-                              : error instanceof SharingError &&
-                                  [
-                                    'IDEMPOTENCY_CONFLICT',
-                                    'PREVIEW_INVALID',
-                                    'VERSION_CONFLICT',
-                                  ].includes(error.code)
-                                ? 409
-                                : error instanceof SourceError
+                              : error instanceof InterviewReviewError ||
+                                  error instanceof DiagnosticError ||
+                                  error instanceof TargetScenarioError
+                                ? 400
+                                : error instanceof EnrichmentError
                                   ? 400
-                                  : error instanceof HttpError
-                                    ? error.status
-                                    : 500;
+                                  : error instanceof SharingError &&
+                                      [
+                                        'IDEMPOTENCY_CONFLICT',
+                                        'PREVIEW_INVALID',
+                                        'VERSION_CONFLICT',
+                                      ].includes(error.code)
+                                    ? 409
+                                    : error instanceof SourceError
+                                      ? 400
+                                      : error instanceof HttpError
+                                        ? error.status
+                                        : 500;
       json(res, status, {
         code:
           error instanceof AccessDenied
