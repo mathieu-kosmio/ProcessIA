@@ -280,6 +280,28 @@ const defineGainHypothesisSchema = gainEvidenceSchema.extend({
 const recordGainMeasurementSchema = gainEvidenceSchema.extend({
   measured_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
+const addAutonomyActionSchema = z
+  .object({
+    idempotency_key: z.string().min(1).max(120),
+    base_version: z.number().int().positive(),
+    title: z.string().trim().min(1).max(240),
+    objective: z.string().trim().min(1).max(1000),
+    target_role: z
+      .object({
+        role_id: z.string().min(1).max(120),
+        label: z.string().trim().min(1).max(160),
+      })
+      .strict(),
+    resource: z
+      .object({
+        kind: z.enum(['guide', 'exercise']),
+        title: z.string().trim().min(1).max(240),
+        description: z.string().trim().min(1).max(1000),
+      })
+      .strict(),
+    completion_criterion: z.string().trim().min(1).max(1000),
+  })
+  .strict();
 const createTargetScenarioSchema = z
   .object({
     idempotency_key: z.string().min(1).max(120),
@@ -569,6 +591,27 @@ export function createAppServer(
             diagnosticGainMatch[2],
             diagnosticGainMatch[3],
             diagnosticGainMatch[4],
+            parsed.data,
+          ),
+        );
+        return;
+      }
+      const diagnosticAutonomyMatch =
+        /^\/api\/dossiers\/([\w-]+)\/models\/([\w-]+)\/diagnostics\/([\w-]+)\/opportunities\/([\w-]+)\/autonomy-actions$/.exec(
+          path,
+        );
+      if (req.method === 'POST' && diagnosticAutonomyMatch && capabilities.diagnostics) {
+        const parsed = addAutonomyActionSchema.safeParse(await body(req));
+        if (!parsed.success) throw new HttpError(400, 'INVALID_REQUEST');
+        json(
+          res,
+          200,
+          capabilities.diagnostics.addAutonomyAction(
+            session,
+            diagnosticAutonomyMatch[1],
+            diagnosticAutonomyMatch[2],
+            diagnosticAutonomyMatch[3],
+            diagnosticAutonomyMatch[4],
             parsed.data,
           ),
         );

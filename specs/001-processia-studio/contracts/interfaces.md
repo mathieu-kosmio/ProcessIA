@@ -129,6 +129,7 @@ Routes locales :
 - `POST /api/dossiers/:dossier/models/:model/diagnostics/:diagnostic/opportunities/:opportunity/priority` : révise une priorité avec version de base et justification ; l'auteur provient de la session.
 - `POST /api/dossiers/:dossier/models/:model/diagnostics/:diagnostic/opportunities/:opportunity/gain-hypothesis` : enregistre une hypothèse initiale datée avec son unité et sa méthode.
 - `POST /api/dossiers/:dossier/models/:model/diagnostics/:diagnostic/opportunities/:opportunity/gain-measurements` : ajoute une mesure observée sans remplacer l'hypothèse.
+- `POST /api/dossiers/:dossier/models/:model/diagnostics/:diagnostic/opportunities/:opportunity/autonomy-actions` : ajoute une action d'autonomie dépendant de l'essai avec rôle, ressource et critère de sortie.
 - `GET /api/dossiers/:dossier/models/:model/capabilities` : liste les architectures conceptuelles accessibles du diagnostic.
 - `POST /api/dossiers/:dossier/models/:model/capabilities` : relie une capacité à au moins deux usages dont les contextes, tâches et périmètres restent distincts.
 
@@ -188,6 +189,8 @@ Une valeur ou une faisabilité absente conserve `value: null` et le libellé Inc
 Le diagnostic possède une version propre. Une révision manuelle de priorité exige une version de base, une nouvelle valeur et une justification. Elle crée une nouvelle version et ajoute une entrée d'historique avec valeur précédente, nouvelle valeur, auteur issu de la session, rôle applicatif et date. Un rejeu identique reste stable ; une version obsolète retourne un conflit. Le client ne peut pas choisir l'auteur dans sa charge utile.
 
 Le suivi du gain utilise la même version optimiste. L'hypothèse initiale contient valeur, unité, méthode, date d'estimation, auteur et date d'enregistrement. Une mesure contient sa propre valeur, méthode, date, auteur et identifiant. Elle exige une hypothèse antérieure sur la même opportunité, la même unité et une date égale ou postérieure. L'ajout conserve l'hypothèse et les mesures précédentes. Une unité différente est refusée sans mutation ; aucune conversion ou causalité n'est déduite.
+
+Une action d'autonomie cible une opportunité et un rôle déjà connu du modèle ou désigné comme responsable humain de l'usage. Elle dépend de l'action d'essai correspondante. Sa ressource est un guide ou un exercice décrit, et son critère de sortie formule un comportement autonome observable. L'auteur provient de la session, l'écriture est idempotente et la version de base protège des conflits. Cette action ne commande aucune prestation et ne marque pas la réalisation comme acquise.
 
 Chaque prérequis devient une action avec un critère de sortie. L'essai dépend de ces actions, son effort reste nul et porte le libellé À estimer. Cette surface ne lance aucun agent, outil métier ou conteneur.
 

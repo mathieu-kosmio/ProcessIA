@@ -26,8 +26,21 @@ test('T010 : relier un constat, une opportunité et un essai sans valeur invent�
     page.getByText('Essayer : Préparer une restitution assistée et sourcée'),
   ).toBeVisible();
   await expect(page.getByText('Responsable : Direction', { exact: true })).toBeVisible();
-  await expect(page.getByText('À estimer', { exact: true })).toHaveCount(2);
+  await expect(page.getByText('À estimer', { exact: true })).toHaveCount(3);
   await expect(page.getByText('Aucun agent démarré', { exact: true })).toBeVisible();
+  const autonomyAction = page
+    .getByRole('listitem')
+    .filter({ hasText: 'S’entraîner à valider une restitution assistée' });
+  await expect(autonomyAction.getByText('AUTONOMIE', { exact: true })).toBeVisible();
+  await expect(
+    autonomyAction.getByText('Exercice guidé : relire un dossier synthétique', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    autonomyAction.getByText(
+      'La Direction valide seule trois propositions sourcées et motive chaque correction.',
+      { exact: true },
+    ),
+  ).toBeVisible();
   const gainEvidence = page.getByRole('region', {
     name: 'Suivi du gain Préparer une restitution assistée et sourcée',
   });
@@ -85,7 +98,7 @@ test('T010 : relier un constat, une opportunité et un essai sans valeur invent�
 
   await expect(page.getByText('Priorité manuelle', { exact: true })).toBeVisible();
   await expect(page.getByText('Haute', { exact: true })).toBeVisible();
-  await expect(page.getByText(/diagnostic v4/)).toBeVisible();
+  await expect(page.getByText(/diagnostic v5/)).toBeVisible();
   const priorityHistory = page.getByRole('region', { name: 'Historique des priorités' });
   await expect(
     priorityHistory.getByRole('heading', { name: 'Historique des priorités' }),

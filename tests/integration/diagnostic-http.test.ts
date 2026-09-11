@@ -178,20 +178,64 @@ test('T010 / HTTP : générer puis relire un diagnostic et sa feuille de route',
   });
   assert.equal(malformedMeasurement.status, 400);
 
+  const autonomyResponse = await fetch(`${opportunityRoute}/autonomy-actions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: base },
+    body: JSON.stringify({
+      idempotency_key: 'diagnostic-http-autonomy-v1',
+      base_version: 3,
+      title: 'S’entraîner à valider une restitution assistée',
+      objective: 'Rendre la Direction autonome dans la validation des propositions.',
+      target_role: { role_id: 'role-direction', label: 'Direction' },
+      resource: {
+        kind: 'exercise',
+        title: 'Exercice guidé : relire un dossier synthétique',
+        description: 'Identifier une source, corriger une proposition et motiver la validation.',
+      },
+      completion_criterion:
+        'La Direction valide seule trois propositions sourcées et motive chaque correction.',
+    }),
+  });
+  assert.equal(autonomyResponse.status, 200);
+  const withAutonomy = await autonomyResponse.json();
+  assert.equal(withAutonomy.version, 4);
+  assert.equal(withAutonomy.roadmap.actions.at(-1).kind, 'autonomy');
+  assert.equal(withAutonomy.roadmap.actions.at(-1).autonomy.prepared_by, demoSession.user_id);
+
+  const malformedAutonomy = await fetch(`${opportunityRoute}/autonomy-actions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: base },
+    body: JSON.stringify({
+      idempotency_key: 'diagnostic-http-autonomy-invalid',
+      base_version: 4,
+      title: 'Action imposée',
+      objective: 'Objectif externe.',
+      target_role: { role_id: 'role-direction', label: 'Direction' },
+      resource: {
+        kind: 'exercise',
+        title: 'Exercice externe',
+        description: 'Charge non autorisée.',
+      },
+      completion_criterion: 'Critère externe.',
+      prepared_by: 'admin',
+    }),
+  });
+  assert.equal(malformedAutonomy.status, 400);
+
   const priorityRoute = `${route}/${diagnostic.diagnostic_id}/opportunities/opportunity-assisted-review/priority`;
   const priorityResponse = await fetch(priorityRoute, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: base },
     body: JSON.stringify({
       idempotency_key: 'diagnostic-http-priority-high-v1',
-      base_version: 3,
+      base_version: 4,
       level: 'high',
       justification: 'La Direction souhaite préparer cet essai dès la levée du prérequis.',
     }),
   });
   assert.equal(priorityResponse.status, 200);
   const revised = await priorityResponse.json();
-  assert.equal(revised.version, 4);
+  assert.equal(revised.version, 5);
   assert.equal(revised.opportunities[0].priority.status, 'manual');
   assert.equal(revised.priority_history[0].actor, demoSession.user_id);
 
@@ -200,7 +244,7 @@ test('T010 / HTTP : générer puis relire un diagnostic et sa feuille de route',
     headers: { 'Content-Type': 'application/json', Origin: base },
     body: JSON.stringify({
       idempotency_key: 'diagnostic-http-priority-invalid',
-      base_version: 4,
+      base_version: 5,
       level: 'low',
       justification: 'Décision externe non autorisée.',
       actor: 'admin',

@@ -322,13 +322,36 @@ export function DiagnosticPanel({
                     </div>
                     <ol className="roadmap-actions">
                       {diagnostic.roadmap.actions.map((action, index) => (
-                        <li key={action.action_id}>
+                        <li
+                          className={action.kind === 'autonomy' ? 'autonomy-action' : undefined}
+                          key={action.action_id}
+                        >
                           <span className="roadmap-index">
                             {String(index + 1).padStart(2, '0')}
                           </span>
                           <div>
-                            <span>{action.kind === 'prerequisite' ? 'PRÉREQUIS' : 'ESSAI'}</span>
+                            <span>
+                              {action.kind === 'prerequisite'
+                                ? 'PRÉREQUIS'
+                                : action.kind === 'experiment'
+                                  ? 'ESSAI'
+                                  : 'AUTONOMIE'}
+                            </span>
                             <strong>{action.title}</strong>
+                            {action.autonomy && (
+                              <>
+                                <p className="autonomy-objective">{action.autonomy.objective}</p>
+                                <section className="autonomy-resource">
+                                  <span>
+                                    {action.autonomy.resource.kind === 'exercise'
+                                      ? 'EXERCICE'
+                                      : 'GUIDE'}
+                                  </span>
+                                  <strong>{action.autonomy.resource.title}</strong>
+                                  <p>{action.autonomy.resource.description}</p>
+                                </section>
+                              </>
+                            )}
                             <p>{action.exit_criteria.join(' · ')}</p>
                           </div>
                           <small>{action.effort_label}</small>

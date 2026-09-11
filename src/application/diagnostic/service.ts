@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import type { Session } from '../../contracts/model.ts';
 import type {
+  AddAutonomyActionInput,
   CreateDiagnosticInput,
   CriterionAssessment,
   DefineGainHypothesisInput,
@@ -22,6 +23,7 @@ export class DiagnosticError extends Error {
       | 'INVALID_OPPORTUNITY'
       | 'INVALID_PRIORITY'
       | 'INVALID_GAIN'
+      | 'INVALID_AUTONOMY'
       | 'DIAGNOSTIC_NOT_FOUND'
       | 'DIAGNOSTIC_CONFLICT'
       | 'IDEMPOTENCY_CONFLICT',
@@ -127,6 +129,7 @@ export class DiagnosticService {
       const prerequisiteActions: RoadmapAction[] = input.opportunity.prerequisites.map(
         (prerequisite) => ({
           action_id: randomUUID(),
+          opportunity_id: input.opportunity.opportunity_id,
           kind: 'prerequisite',
           title: prerequisite.label,
           responsible_role: input.opportunity.human_owner,
@@ -169,6 +172,7 @@ export class DiagnosticService {
             ...prerequisiteActions,
             {
               action_id: randomUUID(),
+              opportunity_id: input.opportunity.opportunity_id,
               kind: 'experiment',
               title: `Essayer : ${input.opportunity.title}`,
               responsible_role: input.opportunity.human_owner,
@@ -453,6 +457,117 @@ export class DiagnosticService {
     }
   }
 
+  addAutonomyAction(
+    session: Session,
+    dossierId: string,
+    modelId: string,
+    diagnosticId: string,
+    opportunityId: string,
+    input: AddAutonomyActionInput,
+  ): Diagnostic {
+    const model = this.models.getModel(session, dossierId, modelId, true);
+    const payloadHash = hash({
+      operation: 'add_autonomy_action',
+      dossier_id: dossierId,
+      model_id: modelId,
+      diagnostic_id: diagnosticId,
+      opportunity_id: opportunityId,
+      ...input,
+    });
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const previous = this.command(dossierId, input.idempotency_key);
+      if (previous) {
+        this.assertReplay(previous, session, payloadHash);
+        const result = normalizeDiagnostic(JSON.parse(previous.result) as Diagnostic);
+        this.db.exec('COMMIT');
+        return result;
+      }
+      const diagnostic = this.read(dossierId, modelId, diagnosticId);
+      this.assertDiagnosticVersion(diagnostic, input.base_version);
+      const opportunity = diagnostic.opportunities.find(
+        (item) => item.opportunity_id === opportunityId,
+      );
+      if (!opportunity)
+        throw new DiagnosticError(
+          'INVALID_AUTONOMY',
+          'L’action d’autonomie doit cibler une opportunité existante.',
+        );
+      const targetRole =
+        model.roles.find((role) => role.id === input.target_role.role_id) ??
+        (opportunity.human_owner.role_id === input.target_role.role_id
+          ? opportunity.human_owner
+          : undefined);
+      const experiment = diagnostic.roadmap.actions.find(
+        (action) => action.kind === 'experiment' && action.opportunity_id === opportunityId,
+      );
+      if (
+        !targetRole ||
+        !experiment ||
+        !input.title.trim() ||
+        !input.objective.trim() ||
+        !input.target_role.label.trim() ||
+        !input.resource.title.trim() ||
+        !input.resource.description.trim() ||
+        !input.completion_criterion.trim() ||
+        !['guide', 'exercise'].includes(input.resource.kind)
+      )
+        throw new DiagnosticError(
+          'INVALID_AUTONOMY',
+          'L’action exige un rôle connu, un exercice ou guide et un critère observable.',
+        );
+      const createdAt = new Date().toISOString();
+      const result: Diagnostic = {
+        ...diagnostic,
+        version: diagnostic.version + 1,
+        roadmap: {
+          actions: [
+            ...diagnostic.roadmap.actions,
+            {
+              action_id: randomUUID(),
+              opportunity_id: opportunityId,
+              kind: 'autonomy',
+              title: input.title.trim(),
+              responsible_role: {
+                role_id: 'role_id' in targetRole ? targetRole.role_id : targetRole.id,
+                label: targetRole.label,
+              },
+              depends_on: [experiment.action_id],
+              effort: null,
+              effort_label: 'À estimer',
+              exit_criteria: [input.completion_criterion.trim()],
+              status: 'proposed',
+              autonomy: {
+                objective: input.objective.trim(),
+                resource: {
+                  kind: input.resource.kind,
+                  title: input.resource.title.trim(),
+                  description: input.resource.description.trim(),
+                },
+                prepared_by: session.user_id,
+                created_at: createdAt,
+              },
+            },
+          ],
+        },
+      };
+      this.persistMutation(
+        dossierId,
+        modelId,
+        diagnosticId,
+        input.idempotency_key,
+        session,
+        payloadHash,
+        result,
+      );
+      this.db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   list(session: Session, dossierId: string, modelId: string): { items: Diagnostic[] } {
     this.models.getModel(session, dossierId, modelId);
     this.reviews.list(session, dossierId, modelId);
@@ -573,10 +688,17 @@ function validateGain(value: number, unit: string, method: string, date: string)
 }
 
 function normalizeDiagnostic(diagnostic: Diagnostic): Diagnostic {
+  const opportunityId = diagnostic.opportunities[0]?.opportunity_id ?? '';
   return {
     ...diagnostic,
     version: diagnostic.version ?? 1,
     priority_history: diagnostic.priority_history ?? [],
     observed_gains: diagnostic.observed_gains ?? [],
+    roadmap: {
+      actions: diagnostic.roadmap.actions.map((action) => ({
+        ...action,
+        opportunity_id: action.opportunity_id ?? opportunityId,
+      })),
+    },
   };
 }

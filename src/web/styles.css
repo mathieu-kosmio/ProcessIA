@@ -1347,6 +1347,28 @@ h1 {
   border-radius: 8px;
   background: #fbfcfa;
 }
+.roadmap-actions li.autonomy-action {
+  align-items: start;
+  border-color: #cbdccf;
+  background: linear-gradient(110deg, #fbfcfa, #f0f6ef);
+}
+.autonomy-objective {
+  color: #4c6957 !important;
+  font-weight: 650;
+}
+.autonomy-resource {
+  margin-top: 9px;
+  padding: 11px 12px;
+  border: 1px solid #d3dfd3;
+  border-radius: 7px;
+  background: #fff;
+}
+.autonomy-resource strong {
+  margin-top: 4px;
+}
+.autonomy-resource p {
+  margin-bottom: 0;
+}
 .roadmap-index {
   display: grid;
   place-items: center;

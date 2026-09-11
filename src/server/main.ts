@@ -179,6 +179,29 @@ if (currentDemoDiagnostic.observed_gains.length === 0) {
     },
   );
 }
+if (!currentDemoDiagnostic.roadmap.actions.some((action) => action.kind === 'autonomy')) {
+  currentDemoDiagnostic = diagnostics.addAutonomyAction(
+    demoSession,
+    'demo-kosmio',
+    'process-diagnostic',
+    currentDemoDiagnostic.diagnostic_id,
+    'opportunity-assisted-review',
+    {
+      idempotency_key: 'demo-autonomy-action-v1',
+      base_version: currentDemoDiagnostic.version,
+      title: 'S’entraîner à valider une restitution assistée',
+      objective: 'Rendre la Direction autonome dans la validation des propositions.',
+      target_role: { role_id: 'role-direction', label: 'Direction' },
+      resource: {
+        kind: 'exercise',
+        title: 'Exercice guidé : relire un dossier synthétique',
+        description: 'Identifier une source, corriger une proposition et motiver la validation.',
+      },
+      completion_criterion:
+        'La Direction valide seule trois propositions sourcées et motive chaque correction.',
+    },
+  );
+}
 if (capabilityMaps.list(demoSession, 'demo-kosmio', 'process-diagnostic').items.length === 0) {
   capabilityMaps.create(demoSession, 'demo-kosmio', {
     idempotency_key: 'demo-capability-quote-extraction-v1',

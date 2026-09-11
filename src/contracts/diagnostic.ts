@@ -99,6 +99,20 @@ export type RecordGainMeasurementInput = {
   measured_at: string;
 };
 
+export type AddAutonomyActionInput = {
+  idempotency_key: string;
+  base_version: number;
+  title: string;
+  objective: string;
+  target_role: { role_id: string; label: string };
+  resource: {
+    kind: 'guide' | 'exercise';
+    title: string;
+    description: string;
+  };
+  completion_criterion: string;
+};
+
 export type GainHypothesis = {
   status: 'hypothesis';
   opportunity_id: string;
@@ -136,7 +150,8 @@ export type PriorityHistoryEntry = {
 
 export type RoadmapAction = {
   action_id: string;
-  kind: 'prerequisite' | 'experiment';
+  opportunity_id: string;
+  kind: 'prerequisite' | 'experiment' | 'autonomy';
   title: string;
   responsible_role: { role_id: string; label: string };
   depends_on: string[];
@@ -144,6 +159,12 @@ export type RoadmapAction = {
   effort_label: 'À estimer';
   exit_criteria: string[];
   status: 'proposed';
+  autonomy?: {
+    objective: string;
+    resource: AddAutonomyActionInput['resource'];
+    prepared_by: string;
+    created_at: string;
+  };
 };
 
 export type Diagnostic = {

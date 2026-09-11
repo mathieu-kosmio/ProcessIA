@@ -254,6 +254,88 @@ test('T010 / TC-034 à TC-037 : une opportunité traçable devient un essai ordo
     withMeasurement.version,
   );
 
+  const withAutonomy = diagnostics.addAutonomyAction(
+    demoSession,
+    'demo-kosmio',
+    'process-diagnostic',
+    result.diagnostic_id,
+    'opportunity-assisted-review',
+    {
+      idempotency_key: 'diagnostic-autonomy-action-v1',
+      base_version: withMeasurement.version,
+      title: 'S’entraîner à valider une restitution assistée',
+      objective: 'Rendre la Direction autonome dans la validation des propositions.',
+      target_role: { role_id: 'role-direction', label: 'Direction' },
+      resource: {
+        kind: 'exercise' as const,
+        title: 'Exercice guidé : relire un dossier synthétique',
+        description: 'Identifier une source, corriger une proposition et motiver la validation.',
+      },
+      completion_criterion:
+        'La Direction valide seule trois propositions sourcées et motive chaque correction.',
+    },
+  );
+  assert.equal(withAutonomy.version, 4);
+  const autonomyAction = withAutonomy.roadmap.actions.at(-1)!;
+  assert.equal(autonomyAction.kind, 'autonomy');
+  assert.deepEqual(autonomyAction.depends_on, [withAutonomy.roadmap.actions[1].action_id]);
+  assert.equal(autonomyAction.responsible_role.role_id, 'role-direction');
+  assert.equal(autonomyAction.autonomy?.resource.kind, 'exercise');
+  assert.match(autonomyAction.autonomy?.resource.title ?? '', /dossier synthétique/i);
+  assert.deepEqual(autonomyAction.exit_criteria, [
+    'La Direction valide seule trois propositions sourcées et motive chaque correction.',
+  ]);
+  const autonomyReplay = diagnostics.addAutonomyAction(
+    demoSession,
+    'demo-kosmio',
+    'process-diagnostic',
+    result.diagnostic_id,
+    'opportunity-assisted-review',
+    {
+      idempotency_key: 'diagnostic-autonomy-action-v1',
+      base_version: withMeasurement.version,
+      title: 'S’entraîner à valider une restitution assistée',
+      objective: 'Rendre la Direction autonome dans la validation des propositions.',
+      target_role: { role_id: 'role-direction', label: 'Direction' },
+      resource: {
+        kind: 'exercise',
+        title: 'Exercice guidé : relire un dossier synthétique',
+        description: 'Identifier une source, corriger une proposition et motiver la validation.',
+      },
+      completion_criterion:
+        'La Direction valide seule trois propositions sourcées et motive chaque correction.',
+    },
+  );
+  assert.equal(autonomyReplay.roadmap.actions.at(-1)?.action_id, autonomyAction.action_id);
+  assert.throws(
+    () =>
+      diagnostics.addAutonomyAction(
+        demoSession,
+        'demo-kosmio',
+        'process-diagnostic',
+        result.diagnostic_id,
+        'opportunity-assisted-review',
+        {
+          idempotency_key: 'diagnostic-autonomy-unknown-role',
+          base_version: withAutonomy.version,
+          title: 'Former un rôle absent',
+          objective: 'Objectif sans rôle connu.',
+          target_role: { role_id: 'role-absent', label: 'Rôle absent' },
+          resource: {
+            kind: 'guide',
+            title: 'Guide synthétique',
+            description: 'Guide sans destinataire valide.',
+          },
+          completion_criterion: 'Le rôle absent réalise seul l’exercice.',
+        },
+      ),
+    /rôle connu/i,
+  );
+  assert.equal(
+    diagnostics.list(demoSession, 'demo-kosmio', 'process-diagnostic').items[0].version,
+    withAutonomy.version,
+  );
+
   const revised = diagnostics.revisePriority(
     demoSession,
     'demo-kosmio',
@@ -262,12 +344,12 @@ test('T010 / TC-034 à TC-037 : une opportunité traçable devient un essai ordo
     'opportunity-assisted-review',
     {
       idempotency_key: 'diagnostic-priority-high-v1',
-      base_version: withMeasurement.version,
+      base_version: withAutonomy.version,
       level: 'high',
       justification: 'La Direction souhaite préparer cet essai dès que le prérequis est levé.',
     },
   );
-  assert.equal(revised.version, 4);
+  assert.equal(revised.version, 5);
   assert.equal(revised.opportunities[0].priority.level, 'high');
   assert.equal(revised.opportunities[0].priority.status, 'manual');
   assert.equal(revised.priority_history.length, 1);
@@ -285,7 +367,7 @@ test('T010 / TC-034 à TC-037 : une opportunité traçable devient un essai ordo
     'opportunity-assisted-review',
     {
       idempotency_key: 'diagnostic-priority-high-v1',
-      base_version: withMeasurement.version,
+      base_version: withAutonomy.version,
       level: 'high',
       justification: 'La Direction souhaite préparer cet essai dès que le prérequis est levé.',
     },
